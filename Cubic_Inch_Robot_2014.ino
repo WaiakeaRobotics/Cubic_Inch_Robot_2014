@@ -3,6 +3,8 @@
 // ================================================================
 /*
 
+5/23/2014
+
 The MPU6050_DMP6 example was used as the starting point for this program 
 
 Final goal is to navigate a fixed grid maze using the gyroscope sensor and front IR sensors to detect gaps in the "maze"
