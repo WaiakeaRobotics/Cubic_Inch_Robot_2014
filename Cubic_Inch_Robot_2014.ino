@@ -42,15 +42,8 @@ versus going down all the way to 10 if it was not aware of the loopover effect o
 // ===                       Gyro Includes                      ===
 // ================================================================
 
-// I2Cdev and MPU6050 must be installed as libraries, or else the .cpp/.h files
-// for both classes must be in the include path of your project
-//#include "LOCAL_I2Cdev.h"
-
-//#include "LOCAL_MPU6050_6Axis_MotionApps20.h"
-//#include "MPU6050.h" // not necessary if using MotionApps include file
-
+// I2Cdev and MPU6050 must be installed as libraries
 #include "I2Cdev.h"
-
 #include "MPU6050_6Axis_MotionApps20.h"
 
 // Arduino Wire library is required if I2Cdev I2CDEV_ARDUINO_WIRE implementation
@@ -59,12 +52,9 @@ versus going down all the way to 10 if it was not aware of the loopover effect o
     #include "Wire.h"
 #endif
 
-// class default I2C address is 0x68
 // specific I2C addresses may be passed as a parameter here
-// AD0 low = 0x68 (default for SparkFun breakout and InvenSense evaluation board)
-// AD0 high = 0x69
+// MPU6050 PIN AD0 low = 0x68 (default)
 MPU6050 mpu;
-//MPU6050 mpu(0x69); // <-- use for AD0 high
 
 /* =========================================================================
    NOTE: In addition to connection 3.3v, GND, SDA, and SCL, this sketch
@@ -73,74 +63,7 @@ MPU6050 mpu;
    digital I/O pin 2.
  * ========================================================================= */
 
-
-// ================================================================
-// ===               2.4Ghz Transceiver Includes                ===
-// ================================================================
-
-#include <SPI.h>
-
-#include "LOCAL_nRF24L01p.h"
-#include "LOCAL_EEPROMex.h"
-
-nRF24L01p receiver(14,8);//CSN,CE
-
-String message;
-int iteration=0;
-
-// ================================================================
-// ===                    PID Library Includes                  ===
-// ================================================================
-#include "PID_CL_2014.h"
-
-//Define Variables we'll be connecting to
-double setpoint, input, output;
-
-//Specify the links and initial tuning parameters
-PID myPID(&input, &output, &setpoint,2,5,1, DIRECT); 
-// Last input "DIRECT" or "REVERSE" will change which way the correction value goes
-//switch them if the correction  makes things worse
-
-// ================================================================
-// ===                      Robot Pin Setup                     ===
-// ================================================================
-
-// Lets define some nice handy constants eh?
-
-#define LED_R 13 // Red LED - Shared with SCK used for NRF24L01 Transceiver
-#define LED_G 0  // Green LED - Shared with serial port receiver pin
-#define LED_B 4  // Blue LED
-
-//Pull these pins high to enable a specific LED
-//Cathode is connected to 38khz pin
-#define LED_IR_R 1 // IR LED Right used for reflective wall sensing
-#define LED_IR_L 7 // IR LED Left used for reflective wall sensing
-#define 38Khz 3    // IR LED 38khz Cathode connection
-
-#define SENSOR_R 15 // Right input from 38khz bandpass filter connected to IR PIN diode receiver
-#define SENSOR_L 16 // Left
-
-#define MOTOR_R_DIR 5 // Right motor direction pin
-#define MOTOR_R_SPD 9 // Right motor speed pin - apply PWM signal (analog out) to this pin
-#define MOTOR_L_DIR 6
-#define MOTOR_L_SPD 10
-
-#define BAT_VOLTAGE 17 //Battery voltage monitor pin - connected to 50% divider to allow the measurment of voltages higher than the vcc of 3.3v
-
-// these need to be checked!
-#define FWD 0 // 0 = forward in our robot wiring
-#define BWD 1 // 1 = backward in our robot wiring
-
-
-bool blinkState = false;
-bool blinkState1 = false;
-bool blinkState2 = false;
-
-int yaw = 0;
-//int yawStart = 0;
-//int yawDiff = 0;
-
-// MPU control/status vars
+// MPU6050 Gyro control/status vars
 bool dmpReady = false;  // set true if DMP init was successful
 uint8_t mpuIntStatus;   // holds actual interrupt status byte from MPU
 uint8_t devStatus;      // return status after each device operation (0 = success, !0 = error)
@@ -157,22 +80,82 @@ VectorFloat gravity;    // [x, y, z]            gravity vector
 float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
-
-
-// packet structure for InvenSense teapot demo
-uint8_t teapotPacket[14] = { '$', 0x02, 0,0, 0,0, 0,0, 0,0, 0x00, 0x00, '\r', '\n' };
-
-
-
-// ================================================================
-// ===               INTERRUPT DETECTION ROUTINE                ===
-// ================================================================
-
+// Interrupt routine for Gyro
 volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
 void dmpDataReady() {
     mpuInterrupt = true;
 }
 
+// ================================================================
+// ===               2.4Ghz Transceiver Includes                ===
+// ================================================================
+
+#include <SPI.h>  // Library for SPI communications used by the nRF24L01 radio
+
+#include "LOCAL_nRF24L01p.h" // nRF24L01 library wait time modified so as not to slow down the program if signal is lost
+#include "LOCAL_EEPROMex.h"  // Library allowing storing of more complicated variables in EEPROM non volatile (Flash) Memory
+
+nRF24L01p receiver(14,8);//CSN,CE //Setup radio as receiver with CSN on arduino pin 14, CE on 8
+
+// ================================================================
+// ===                    PID Library Includes                  ===
+// ================================================================
+#include "PID_CL_2014.h"
+
+//Define Variables we'll be connecting to
+double setpoint, input, output;
+
+//Specify the links and initial tuning parameters
+PID myPID(&input, &output, &setpoint,2,5,1, DIRECT); 
+// Last input "DIRECT" or "REVERSE" will change which way the correction value goes
+//switch them if the correction  makes things worse
+
+// ================================================================
+// ===                    Robot Pin Defines                     ===
+// ================================================================
+
+// Lets define some nice handy constants eh?
+
+#define LED_R 13 // Red LED - Shared with SCK used for NRF24L01 Transceiver
+#define LED_G 0  // Green LED - Shared with serial port receiver pin
+#define LED_B 4  // Blue LED
+
+//Pull these pins high to enable a specific LED
+//Cathode is connected to 38khz pin
+#define IR_LED_R 1 // IR LED Right used for reflective wall sensing
+#define IR_LED_L 7 // IR LED Left used for reflective wall sensing
+#define IR_38Khz 3    // IR LED 38khz Cathode connection
+
+#define IR_SENSOR_R 15 // Right input from 38khz bandpass filter connected to IR PIN diode receiver
+#define IR_SENSOR_L 16 // 
+
+#define MOTOR_R_DIR 5 // Right motor direction pin
+#define MOTOR_R_SPD 9 // Right motor speed pin - apply PWM signal (analog out) to this pin
+#define MOTOR_L_DIR 6
+#define MOTOR_L_SPD 10
+
+#define BAT_VOLTAGE 17 //Battery voltage monitor pin - connected to 50% divider to allow the measurment of voltages higher than the vcc of 3.3v
+
+// these need to be checked!
+#define FWD 0 // 0 = forward in our robot wiring
+#define BWD 1 // 1 = backward in our robot wiring
+
+// ================================================================
+// ===                  Variable Definitions                    ===
+// ================================================================
+
+String message; // Used by radio code - may not be final
+int iteration=0;
+
+bool blinkState = false;
+bool blinkState1 = false;
+bool blinkState2 = false;
+
+int yaw = 0;
+//int yawStart = 0;
+//int yawDiff = 0;
+
+int outputInt;
 
 
 // ================================================================
@@ -272,6 +255,34 @@ void setup() {
     pinMode(LED_G, OUTPUT);
     pinMode(LED_B, OUTPUT);
     
+    digitalWrite(LED_R, 0);
+    digitalWrite(LED_G, 0);
+    digitalWrite(LED_B, 0);
+    
+    pinMode(IR_LED_R, OUTPUT);
+    pinMode(IR_LED_L, OUTPUT);
+    pinMode(IR_38Khz, OUTPUT);
+    
+    digitalWrite(IR_LED_R, 0);
+    digitalWrite(IR_LED_L, 0);
+    digitalWrite(IR_38Khz, 0);
+    
+    pinMode(MOTOR_R_DIR, OUTPUT);
+    pinMode(MOTOR_R_SPD, OUTPUT);
+    pinMode(MOTOR_L_DIR, OUTPUT);
+    pinMode(MOTOR_L_SPD, OUTPUT);
+    
+    digitalWrite(MOTOR_R_DIR, FWD);
+    digitalWrite(MOTOR_R_SPD, 0);
+    digitalWrite(MOTOR_L_DIR, FWD);
+    digitalWrite(MOTOR_L_SPD, 0);
+    
+    pinMode(BAT_VOLTAGE, INPUT);
+    
+    pinMode(IR_SENSOR_R, INPUT);
+    pinMode(IR_SENSOR_L, INPUT);
+    
+    
 // ================================================================
 // ===                 PID Feedback Loop Setup                   ===
 // ================================================================ 
@@ -280,8 +291,8 @@ void setup() {
         myPID.SetMode(AUTOMATIC);
         myPID.SetOutputLimits(0,100);
         myPID.SetSampleTime(20);
-}
-
+        
+}// end setup loop
 
 // ================================================================
 // ===                    MAIN PROGRAM LOOP                     ===
@@ -363,18 +374,26 @@ void loop() {
         Serial.print("ypr\t");
         Serial.print(yaw);           // This is just for debugging will not go into final code
         Serial.print("\t");
-        Serial.println(setpoint);
-        
-        receiver.txPL(yaw);          // Send the same debugging data over the 2.4ghz transceiver to remote control
-        receiver.send(FAST);         // Send it fast without error checking
-        
+        Serial.print(setpoint);
+ 
         setpoint = 0;
         input = yaw;
         
         myPID.Compute(); // Compute the new PID values based on the setpoint and input values
         
-        analogWrite(5,output + 100); // Modify the motor speed based on the PID output
+        analogWrite(MOTOR_R_SPD,output + 100); // Modify the motor speed based on the PID output
+        
+        outputInt = output;
+        
+        receiver.txPL(outputInt);          // Send the same debugging data over the 2.4ghz transceiver to remote control
+        receiver.send(FAST);         // Send it fast without error checking
+        
 
+        Serial.print("\t");
+        Serial.println(output);
+        
+        digitalWrite(IR_LED_R, 1);
+        
        // Serial.print("\t");
        //Serial.print(ypr[1] * 180/M_PI);
         //Serial.print("\t");
