@@ -101,9 +101,32 @@ PID myPID(&input, &output, &setpoint,2,5,1, DIRECT);
 // ===                      Robot Pin Setup                     ===
 // ================================================================
 
-#define LED_PIN 4 // 
-#define LED1_PIN 3 // 3 will conflict with actual pcb
-#define LED2_PIN 17 //A3 not final will conflict
+// Lets define some nice handy constants eh?
+
+#define LED_R 13 // Red LED - Shared with SCK used for NRF24L01 Transceiver
+#define LED_G 0  // Green LED - Shared with serial port receiver pin
+#define LED_B 4  // Blue LED
+
+//Pull these pins high to enable a specific LED
+//Cathode is connected to 38khz pin
+#define LED_IR_R 1 // IR LED Right used for reflective wall sensing
+#define LED_IR_L 7 // IR LED Left used for reflective wall sensing
+#define 38Khz 3    // IR LED 38khz Cathode connection
+
+#define SENSOR_R 15 // Right input from 38khz bandpass filter connected to IR PIN diode receiver
+#define SENSOR_L 16 // Left
+
+#define MOTOR_R_DIR 5 // Right motor direction pin
+#define MOTOR_R_SPD 9 // Right motor speed pin - apply PWM signal (analog out) to this pin
+#define MOTOR_L_DIR 6
+#define MOTOR_L_SPD 10
+
+#define BAT_VOLTAGE 17 //Battery voltage monitor pin - connected to 50% divider to allow the measurment of voltages higher than the vcc of 3.3v
+
+// these need to be checked!
+#define FWD 0 // 0 = forward in our robot wiring
+#define BWD 1 // 1 = backward in our robot wiring
+
 
 bool blinkState = false;
 bool blinkState1 = false;
@@ -241,9 +264,9 @@ void setup() {
 // ===                     Robot Pin Setup                      ===
 // ================================================================
     // configure LED for output
-    pinMode(LED_PIN, OUTPUT);
-    pinMode(LED1_PIN, OUTPUT);
-    pinMode(LED2_PIN, OUTPUT);
+    pinMode(LED_R, OUTPUT);
+    pinMode(LED_G, OUTPUT);
+    pinMode(LED_B, OUTPUT);
     
 // ================================================================
 // ===                 PID Feedback Loop Setup                   ===
@@ -278,13 +301,13 @@ void loop() {
             Serial.println("\"");
         }
         
-        blinkState1 = !blinkState1;
-        digitalWrite(LED1_PIN, blinkState1);
+       // blinkState1 = !blinkState1;
+       // digitalWrite(LED_B, blinkState1);
     }
-    digitalWrite(LED1_PIN, 0); // turn off the indicator 2 led incase it was left on
+    //digitalWrite(LED_B, 0); // turn off the indicator 2 led incase it was left on
     
-    blinkState2 = !blinkState2; // invert blinkstate2
-    digitalWrite(LED2_PIN, blinkState2);
+    //blinkState2 = !blinkState2; // invert blinkstate2
+   // digitalWrite(LED2_PIN, blinkState2);
 
     // reset interrupt flag and get INT_STATUS byte
     mpuInterrupt = false;
@@ -356,8 +379,8 @@ void loop() {
 
 
         // blink LED to indicate activity
-        blinkState = !blinkState;
-        digitalWrite(LED_PIN, blinkState);
+       // blinkState = !blinkState;
+       // digitalWrite(LED_PIN, blinkState);
 
     }
 }
