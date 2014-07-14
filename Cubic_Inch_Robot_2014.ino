@@ -44,9 +44,9 @@ versus going down all the way to 10 if it was not aware of the loopover effect o
 
 // I2Cdev and MPU6050 must be installed as libraries, or else the .cpp/.h files
 // for both classes must be in the include path of your project
-#include "I2Cdev.h"
+#include "LOCAL_I2Cdev.h"
 
-#include "MPU6050_6Axis_MotionApps20.h"
+#include "LOCAL_MPU6050_6Axis_MotionApps20.h"
 //#include "MPU6050.h" // not necessary if using MotionApps include file
 
 
@@ -76,8 +76,9 @@ MPU6050 mpu;
 // ================================================================
 
 #include <SPI.h>
-// library wait time modified so as not to slow down the program if signal is lost
-#include <nRF24L01p.h> 
+
+#include "LOCAL_nRF24L01p.h"
+#include "LOCAL_EEPROMex.h"
 
 nRF24L01p receiver(14,8);//CSN,CE
 
