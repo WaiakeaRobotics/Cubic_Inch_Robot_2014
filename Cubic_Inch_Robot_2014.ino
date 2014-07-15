@@ -95,7 +95,8 @@ void dmpDataReady() {
 #include "LOCAL_nRF24L01p.h" // nRF24L01 library wait time modified so as not to slow down the program if signal is lost
 #include "LOCAL_EEPROMex.h"  // Library allowing storing of more complicated variables in EEPROM non volatile (Flash) Memory
 
-nRF24L01p receiver(14,8);//CSN,CE //Setup radio as receiver with CSN on arduino pin 14, CE on 8
+nRF24L01p radio(14,8);//CSN,CE //Setup radio as radio with CSN on arduino pin 14, CE on 8
+boolean initialised=false;
 
 // ================================================================
 // ===                    PID Library Includes                  ===
@@ -110,6 +111,7 @@ PID myPID(&input, &output, &setpoint,2,5,1, DIRECT);
 // Last input "DIRECT" or "REVERSE" will change which way the correction value goes
 //switch them if the correction  makes things worse
 
+
 // ================================================================
 // ===                    Robot Pin Defines                     ===
 // ================================================================
@@ -117,7 +119,7 @@ PID myPID(&input, &output, &setpoint,2,5,1, DIRECT);
 // Lets define some nice handy constants eh?
 
 #define LED_R 13 // Red LED - Shared with SCK used for NRF24L01 Transceiver
-#define LED_G 0  // Green LED - Shared with serial port receiver pin
+#define LED_G 0  // Green LED - Shared with serial port radio pin
 #define LED_B 4  // Blue LED
 
 //Pull these pins high to enable a specific LED
@@ -126,7 +128,7 @@ PID myPID(&input, &output, &setpoint,2,5,1, DIRECT);
 #define IR_LED_L 7 // IR LED Left used for reflective wall sensing
 #define IR_38Khz 3    // IR LED 38khz Cathode connection
 
-#define IR_SENSOR_R 15 // Right input from 38khz bandpass filter connected to IR PIN diode receiver
+#define IR_SENSOR_R 15 // Right input from 38khz bandpass filter connected to IR PIN diode radio
 #define IR_SENSOR_L 16 // 
 
 #define MOTOR_R_DIR 5 // Right motor direction pin
@@ -134,17 +136,35 @@ PID myPID(&input, &output, &setpoint,2,5,1, DIRECT);
 #define MOTOR_L_DIR 6
 #define MOTOR_L_SPD 10
 
-#define BAT_VOLTAGE 17 //Battery voltage monitor pin - connected to 50% divider to allow the measurment of voltages higher than the vcc of 3.3v
+#define BATT_VOLTAGE 17 //Battery voltage monitor pin - connected to 50% divider to allow the measurment of voltages higher than the vcc of 3.3v
 
 // these need to be checked!
 #define FWD 0 // 0 = forward in our robot wiring
 #define BWD 1 // 1 = backward in our robot wiring
+
+// The below defines are for the bit location of the corresponding buttons 
+#define A 0  // Right D pad up button
+#define B 1  // Right D pad right button
+#define C 2  // Right D pad down button
+#define D 3  // Right D pad left button
+
+#define UP 4    // Left D pad up button
+#define RIGHT 5 // Left D pad right button
+#define DOWN 6  // Left D pad down button
+#define LEFT 7  // Left D pad left button
 
 // ================================================================
 // ===                  Variable Definitions                    ===
 // ================================================================
 
 String message; // Used by radio code - may not be final
+unsigned char buttons; // value of the buttons received from the remote
+unsigned char buffer; // receive variable
+unsigned char bufferLast; // last received variable
+
+int radioTimeout;
+int receiveCheck;
+
 int iteration=0;
 
 bool blinkState = false;
@@ -156,6 +176,12 @@ int yaw = 0;
 //int yawDiff = 0;
 
 int outputInt;
+
+int forwardRamp;
+int loopTimer;
+
+int slowTimer;
+
 
 
 // ================================================================
@@ -174,7 +200,7 @@ void setup() {
     // initialize serial communication
     // (115200 chosen because it is required for Teapot Demo output, but it's
     // really up to you depending on your project)
-    Serial.begin(115200);
+    //Serial.begin(115200);
     //while (!Serial); // wait for Leonardo enumeration, others continue immediately
 
     // NOTE: 8MHz or slower host processors, like the Teensy @ 3.3v or Ardunio
@@ -184,16 +210,16 @@ void setup() {
     // crystal solution for the UART timer.
 
     // initialize device
-    Serial.println(F("Initializing I2C devices..."));
+    //Serial.println(F("Initializing I2C devices..."));
     mpu.initialize();
 
     // verify connection
-    Serial.println(F("Testing device connections..."));
-    Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
+    //Serial.println(F("Testing device connections..."));
+    //Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
 
 
     // load and configure the DMP
-    Serial.println(F("Initializing DMP..."));
+    //Serial.println(F("Initializing DMP..."));
     devStatus = mpu.dmpInitialize();
 
     // supply your own gyro offsets here, scaled for min sensitivity
@@ -205,16 +231,16 @@ void setup() {
     // make sure it worked (returns 0 if so)
     if (devStatus == 0) {
         // turn on the DMP, now that it's ready
-        Serial.println(F("Enabling DMP..."));
+        //Serial.println(F("Enabling DMP..."));
         mpu.setDMPEnabled(true);
 
         // enable Arduino interrupt detection
-        Serial.println(F("Enabling interrupt detection (Arduino external interrupt 0)..."));
+       // Serial.println(F("Enabling interrupt detection (Arduino external interrupt 0)..."));
         attachInterrupt(0, dmpDataReady, RISING);
         mpuIntStatus = mpu.getIntStatus();
 
         // set our DMP Ready flag so the main loop() function knows it's okay to use it
-        Serial.println(F("DMP ready! Waiting for first interrupt..."));
+        //Serial.println(F("DMP ready! Waiting for first interrupt..."));
         dmpReady = true;
 
         // get expected DMP packet size for later comparison
@@ -224,9 +250,9 @@ void setup() {
         // 1 = initial memory load failed
         // 2 = DMP configuration updates failed
         // (if it's going to break, usually the code will be 1)
-        Serial.print(F("DMP Initialization failed (code "));
-        Serial.print(devStatus);
-        Serial.println(F(")"));
+       // Serial.print(F("DMP Initialization failed (code "));
+       // Serial.print(devStatus);
+       // Serial.println(F(")"));
     }
     
 // ================================================================
@@ -236,16 +262,13 @@ void setup() {
     SPI.begin();
     //SPI.setClockDivider(SPI_CLOCK_DIV2);
     SPI.setBitOrder(MSBFIRST);
-    receiver.channel(90);
-    receiver.TXaddress("CIRem");
-    receiver.RXaddress("CIBot");
-    receiver.init();
-    //delay(3000);
-    Serial.println("I'm PRX as transceiver");
-    //receiver.txPL("Hi PTX. I'm ready.");
-    //receiver.send(SLOW);
-    //receiver.txPL("tell me the library's name");
-    //receiver.send(SLOW);
+    radio.channel(0);
+    radio.TXaddress("CIRem");
+    radio.RXaddress("CIBot");
+    radio.init();
+    delay(1000);
+    //Serial.println("Hi I'm your Robot");
+
 
 // ================================================================
 // ===                     Robot Pin Setup                      ===
@@ -255,15 +278,15 @@ void setup() {
     pinMode(LED_G, OUTPUT);
     pinMode(LED_B, OUTPUT);
     
-    digitalWrite(LED_R, 0);
-    digitalWrite(LED_G, 0);
-    digitalWrite(LED_B, 0);
+    digitalWrite(LED_R, 1); // 1 = off
+    digitalWrite(LED_G, 1);
+    digitalWrite(LED_B, 1);
     
     pinMode(IR_LED_R, OUTPUT);
     pinMode(IR_LED_L, OUTPUT);
     pinMode(IR_38Khz, OUTPUT);
     
-    digitalWrite(IR_LED_R, 0);
+    digitalWrite(IR_LED_R, 0); // 0 = off
     digitalWrite(IR_LED_L, 0);
     digitalWrite(IR_38Khz, 0);
     
@@ -277,7 +300,7 @@ void setup() {
     digitalWrite(MOTOR_L_DIR, FWD);
     digitalWrite(MOTOR_L_SPD, 0);
     
-    pinMode(BAT_VOLTAGE, INPUT);
+    pinMode(BATT_VOLTAGE, INPUT);
     
     pinMode(IR_SENSOR_R, INPUT);
     pinMode(IR_SENSOR_L, INPUT);
@@ -292,6 +315,15 @@ void setup() {
         myPID.SetOutputLimits(0,100);
         myPID.SetSampleTime(20);
         
+        
+        //if (!dmpReady) return; // if programming GYRO failed, don't try to do anything
+        
+// ================================================================
+// ===                   38Khz SETUP                            ===
+// ================================================================ 
+
+setIrModOutput();
+        
 }// end setup loop
 
 // ================================================================
@@ -299,31 +331,42 @@ void setup() {
 // ================================================================
 
 void loop() {
-    // if programming failed, don't try to do anything
-    if (!dmpReady) return;
-
+    
+    
+/*
+// ================================================================
+// ===               RECEIVE DATA AND TURN ON MOTORS            ===
+// ================================================================
+/*
     // wait for MPU interrupt or extra packet(s) available
     while (!mpuInterrupt && fifoCount < packetSize) {
         // other program behavior stuff here
+        
+      // digitalWrite(LED_B, 1); // indicate that we are waiting for gyro
        
-        
-        if(receiver.available()){ // Is there received data from the remote control?
-            message="";
-            receiver.read();
-            receiver.rxPL(message); //save this data to the "message" variable
-            Serial.print("PTX says: \""); // print this data to the serial port for debugging
-            Serial.print(message); // This will be commented out in final version
-            Serial.println("\"");
+        slowTimer++;
+        if (slowTimer > 20){
+          slowTimer = 0;
+          
+          //radio.txPL(yaw);          // Send the same debugging data over the 2.4ghz transceiver to remote control
+          //radio.send(FAST);         // Send it fast without error checking
+          
+          Serial.print("ypr\t");
+          Serial.print(yaw);           // This is just for debugging will not go into final code
+          Serial.print("\t");
+          Serial.print(buttons,BIN);
+          Serial.print("\t");
+          Serial.println(setpoint); 
         }
-        
-       // blinkState1 = !blinkState1;
-       // digitalWrite(LED_B, blinkState1);
-    }
-    //digitalWrite(LED_B, 0); // turn off the indicator 2 led incase it was left on
     
-    //blinkState2 = !blinkState2; // invert blinkstate2
-   // digitalWrite(LED2_PIN, blinkState2);
-
+       
+    } // end MPU wait loop
+    
+    
+    //digitalWrite(LED_B, 0);
+// ================================================================
+// ===                   GRYO READ AND CALCULATE                ===
+// ================================================================
     // reset interrupt flag and get INT_STATUS byte
     mpuInterrupt = false;
     mpuIntStatus = mpu.getIntStatus();
@@ -371,44 +414,138 @@ void loop() {
         //yawInt = yaw;
         setpoint = (yaw - 900) % 3600;   // need to see if this works for -180 +180 constraint
 
-        Serial.print("ypr\t");
-        Serial.print(yaw);           // This is just for debugging will not go into final code
-        Serial.print("\t");
-        Serial.print(setpoint);
+       // Serial.print("ypr\t");
+       // Serial.print(yaw);           // This is just for debugging will not go into final code
+        //Serial.print("\t");
+        //Serial.print(setpoint);
  
         setpoint = 0;
         input = yaw;
         
         myPID.Compute(); // Compute the new PID values based on the setpoint and input values
         
-        analogWrite(MOTOR_R_SPD,output + 100); // Modify the motor speed based on the PID output
+        //analogWrite(MOTOR_R_SPD,output + 100); // Modify the motor speed based on the PID output
         
         outputInt = output;
         
-        receiver.txPL(outputInt);          // Send the same debugging data over the 2.4ghz transceiver to remote control
-        receiver.send(FAST);         // Send it fast without error checking
+            
+      
+    } // End gyro update loop
+    
+    */
+    
+// ================================================================
+// ===                   SEND DATA TO REMOTE                    ===
+// ================================================================
+
+    
+// ================================================================
+// ===                  READ DATA FROM REMOTE                   ===
+// ================================================================
+     if(radio.available()){ // Is there received data from the remote control?
+        //initialised=false;
+     
+        radioTimeout = 0;
         
-
-        Serial.print("\t");
-        Serial.println(output);
+        buffer=0;
+        radio.read();
+        radio.rxPL(buffer); //save this data to the "buffer" variable
+       
+        if (buffer == bufferLast){ // Data verification - requires 10 matching receives to send it to the motor routine.
+          receiveCheck ++;
+          if (receiveCheck > 10){
+            buttons = buffer;
+          }
+        }       
+        else {
+          receiveCheck = 0;
+        }
+        bufferLast = buffer;
+     
+        if (bitRead(buttons, UP) == HIGH){ // Forward
         
-        digitalWrite(IR_LED_R, 1);
+        digitalWrite(MOTOR_R_DIR, FWD);
+        digitalWrite(MOTOR_L_DIR, FWD);
+        analogWrite(MOTOR_R_SPD, forwardRamp);
+        analogWrite(MOTOR_L_SPD, forwardRamp);
         
-       // Serial.print("\t");
-       //Serial.print(ypr[1] * 180/M_PI);
-        //Serial.print("\t");
-        //Serial.println(ypr[2] * 180/M_PI);
+        if (forwardRamp > 254) // keep ramp value from overflowing back to 0
+        {
+          forwardRamp = 254;
+        }
+        
+        forwardRamp ++; // increment ramp value by 1 
 
+        }
+        else{
+          forwardRamp = 30;
+          loopTimer = 0;
+        }  
+        
+        if (bitRead(buttons, A) == HIGH){ // Super Speed!
+          digitalWrite(MOTOR_R_DIR, FWD);
+          digitalWrite(MOTOR_L_DIR, FWD);
+          analogWrite(MOTOR_R_SPD, 255);
+          analogWrite(MOTOR_L_SPD, 255);
+        }
+        
+        if (bitRead(buttons, DOWN) == HIGH){ // Backwards
+          digitalWrite(MOTOR_R_DIR, BWD);
+          digitalWrite(MOTOR_L_DIR, BWD);
+          analogWrite(MOTOR_R_SPD, 120);
+          analogWrite(MOTOR_L_SPD, 120);
+        }
+        
+        if (bitRead(buttons, LEFT) == HIGH){ // Left
+          digitalWrite(MOTOR_R_DIR, FWD);
+          digitalWrite(MOTOR_L_DIR, BWD);
+          analogWrite(MOTOR_R_SPD, 50);
+          analogWrite(MOTOR_L_SPD, 50);
+        }
+        else if (bitRead(buttons, RIGHT) == HIGH){ // Right
+          digitalWrite(MOTOR_R_DIR, BWD);
+          digitalWrite(MOTOR_L_DIR, FWD);
+          analogWrite(MOTOR_R_SPD, 50);
+          analogWrite(MOTOR_L_SPD, 50);
+        } 
+        
+        if (buttons == 0) // No buttons pushed
+        {
+          analogWrite(MOTOR_R_SPD, 0);
+          analogWrite(MOTOR_L_SPD, 0);
+        }
+      } // end receive avaiable loop
+      
 
+    digitalWrite(LED_G, digitalRead(IR_SENSOR_R));
+    digitalWrite(LED_B, digitalRead(IR_SENSOR_L));
+    digitalWrite(IR_LED_R, 1);
+    digitalWrite(IR_LED_L, 1);
+    //blinkState != blinkState;
+    //digitalWrite(LED_B, blinkState); // Toggle the blue LED
+    
 
-        // blink LED to indicate activity
-       // blinkState = !blinkState;
-       // digitalWrite(LED_PIN, blinkState);
-
-    }
+    
 }
 
-int smod(int z1, int z2) {
+// ================================================================
+// ===                 38Khz IR SETUP FUNCTION                  ===
+// ================================================================
+
+void setIrModOutput(){  // sets pin 3 going at the IR modulation rate
+  pinMode(3, OUTPUT);
+  TCCR2A = _BV(COM2B1) | _BV(WGM21) | _BV(WGM20); // Just enable output on Pin 3 and disable it on Pin 11
+  TCCR2B = _BV(WGM22) | _BV(CS22);
+  OCR2A = 51; // defines the frequency 51 = 38.4 KHz, 54 = 36.2 KHz, 58 = 34 KHz, 62 = 32 KHz
+  OCR2B = 26;  // deines the duty cycle - Half the OCR2A value for 50%
+  TCCR2B = TCCR2B & 0b00111000 | 0x2; // select a prescale value of 8:1 of the system clock
+}
+
+// ================================================================
+// ===                  SOFTWARE MOD FUNCTION                   ===
+// ================================================================
+
+int smod(int z1, int z2) { // Software MOD function
   int ze;
   ze=z1 % z2;
   if (ze>=0)  {
