@@ -255,30 +255,16 @@ void setup() {
        // Serial.println(F(")"));
     }
     
-// ================================================================
-// ===               2.4Ghz Transceiver Setup                   ===
-// ================================================================  
-
-    SPI.begin();
-    //SPI.setClockDivider(SPI_CLOCK_DIV2);
-    SPI.setBitOrder(MSBFIRST);
-    radio.channel(0);
-    radio.TXaddress("CIRem");
-    radio.RXaddress("CIBot");
-    radio.init();
-    delay(1000);
-    //Serial.println("Hi I'm your Robot");
-
 
 // ================================================================
 // ===                     Robot Pin Setup                      ===
 // ================================================================
     // configure LED for output
-    pinMode(LED_R, OUTPUT);
+    //pinMode(LED_R, OUTPUT);
     pinMode(LED_G, OUTPUT);
     pinMode(LED_B, OUTPUT);
     
-    digitalWrite(LED_R, 1); // 1 = off
+    //digitalWrite(LED_R, 1); // 1 = off
     digitalWrite(LED_G, 1);
     digitalWrite(LED_B, 1);
     
@@ -296,14 +282,29 @@ void setup() {
     pinMode(MOTOR_L_SPD, OUTPUT);
     
     digitalWrite(MOTOR_R_DIR, FWD);
-    digitalWrite(MOTOR_R_SPD, 0);
+    analogWrite(MOTOR_R_SPD, 0);
     digitalWrite(MOTOR_L_DIR, FWD);
-    digitalWrite(MOTOR_L_SPD, 0);
+    analogWrite(MOTOR_L_SPD, 0);
     
     pinMode(BATT_VOLTAGE, INPUT);
     
     pinMode(IR_SENSOR_R, INPUT);
     pinMode(IR_SENSOR_L, INPUT);
+    
+// ================================================================
+// ===               2.4Ghz Transceiver Setup                   ===
+// ================================================================  
+
+    SPI.begin();
+    //SPI.setClockDivider(SPI_CLOCK_DIV2);
+    SPI.setBitOrder(MSBFIRST);
+    radio.channel(0);
+    radio.TXaddress("CIRem");
+    radio.RXaddress("CIBot");
+    radio.init();
+    delay(1000);
+    //Serial.println("Hi I'm your Robot");
+
     
     
 // ================================================================
