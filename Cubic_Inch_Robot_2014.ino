@@ -90,13 +90,21 @@ void dmpDataReady() {
 // ===               2.4Ghz Transceiver Includes                ===
 // ================================================================
 
+
+
 #include <SPI.h>  // Library for SPI communications used by the nRF24L01 radio
 
+
+#include <RH_NRF24.h>
+RH_NRF24 nrf24(8, 14);
+
+/*
 #include "LOCAL_nRF24L01p.h" // nRF24L01 library wait time modified so as not to slow down the program if signal is lost
 #include "LOCAL_EEPROMex.h"  // Library allowing storing of more complicated variables in EEPROM non volatile (Flash) Memory
 
 nRF24L01p radio(14,8);//CSN,CE //Setup radio as radio with CSN on arduino pin 14, CE on 8
 boolean initialised=false;
+*/
 
 // ================================================================
 // ===                    PID Library Includes                  ===
@@ -157,6 +165,8 @@ PID myPID(&input, &output, &setpoint,2,5,1, DIRECT);
 // ===                  Variable Definitions                    ===
 // ================================================================
 
+uint8_t data[1];  // 1 element array of unsigned 8-bit type
+
 String message; // Used by radio code - may not be final
 unsigned char buttons; // value of the buttons received from the remote
 unsigned char buffer; // receive variable
@@ -189,6 +199,12 @@ int slowTimer;
 // ================================================================
 
 void setup() {
+  
+    Serial.begin(115200);
+    
+// ================================================================
+// ===                        GYRO SETUP                        ===
+// ================================================================
     // join I2C bus (I2Cdev library doesn't do this automatically)
     #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
         Wire.begin();
@@ -197,17 +213,6 @@ void setup() {
         Fastwire::setup(400, true);
     #endif
 
-    // initialize serial communication
-    // (115200 chosen because it is required for Teapot Demo output, but it's
-    // really up to you depending on your project)
-    //Serial.begin(115200);
-    //while (!Serial); // wait for Leonardo enumeration, others continue immediately
-
-    // NOTE: 8MHz or slower host processors, like the Teensy @ 3.3v or Ardunio
-    // Pro Mini running at 3.3v, cannot handle this baud rate reliably due to
-    // the baud timing being too misaligned with processor ticks. You must use
-    // 38400 or slower in these cases, or use some kind of external separate
-    // crystal solution for the UART timer.
 
     // initialize device
     //Serial.println(F("Initializing I2C devices..."));
@@ -294,7 +299,7 @@ void setup() {
 // ================================================================
 // ===               2.4Ghz Transceiver Setup                   ===
 // ================================================================  
-
+/*
     SPI.begin();
     //SPI.setClockDivider(SPI_CLOCK_DIV2);
     SPI.setBitOrder(MSBFIRST);
@@ -305,7 +310,14 @@ void setup() {
     delay(1000);
     //Serial.println("Hi I'm your Robot");
 
-    
+    */
+     if (!nrf24.init())
+    Serial.println("init failed");
+  // Defaults after init are 2.402 GHz (channel 2), 2Mbps, 0dBm
+  if (!nrf24.setChannel(1))
+    Serial.println("setChannel failed");
+  if (!nrf24.setRF(RH_NRF24::DataRate2Mbps, RH_NRF24::TransmitPower0dBm))
+    Serial.println("setRF failed");    
     
 // ================================================================
 // ===                 PID Feedback Loop Setup                   ===
@@ -324,6 +336,10 @@ void setup() {
 // ================================================================ 
 
 setIrModOutput();
+    digitalWrite(MOTOR_R_DIR, FWD);
+    analogWrite(MOTOR_R_SPD, 0);
+    digitalWrite(MOTOR_L_DIR, FWD);
+    analogWrite(MOTOR_L_SPD, 0);
         
 }// end setup loop
 
@@ -338,7 +354,8 @@ void loop() {
 // ================================================================
 // ===               RECEIVE DATA AND TURN ON MOTORS            ===
 // ================================================================
-/*
+*/
+
     // wait for MPU interrupt or extra packet(s) available
     while (!mpuInterrupt && fifoCount < packetSize) {
         // other program behavior stuff here
@@ -433,7 +450,7 @@ void loop() {
       
     } // End gyro update loop
     
-    */
+    
     
 // ================================================================
 // ===                   SEND DATA TO REMOTE                    ===
@@ -443,15 +460,27 @@ void loop() {
 // ================================================================
 // ===                  READ DATA FROM REMOTE                   ===
 // ================================================================
-     if(radio.available()){ // Is there received data from the remote control?
+//Serial.println("running");
+     if (nrf24.available()){ // Is there received data from the remote control?
         //initialised=false;
      
         radioTimeout = 0;
         
-        buffer=0;
-        radio.read();
-        radio.rxPL(buffer); //save this data to the "buffer" variable
+          buffer=0;
+      // Should be a message for us now   
+      uint8_t buf[RH_NRF24_MAX_MESSAGE_LEN];
+      uint8_t len = sizeof(buf);
+      nrf24.recv(buf, &len);
+      Serial.print("got request: ");
+      Serial.println(buf[0],BIN);
+      
+      data[0] = map(yaw, 0, 3600, 0, 255);
+      nrf24.send(data, sizeof(data));
+      nrf24.waitPacketSent();
+      Serial.println("Sent a reply");
        
+       buttons = buf[0];
+       /*
         if (buffer == bufferLast){ // Data verification - requires 10 matching receives to send it to the motor routine.
           receiveCheck ++;
           if (receiveCheck > 10){
@@ -462,6 +491,7 @@ void loop() {
           receiveCheck = 0;
         }
         bufferLast = buffer;
+     */
      
         if (bitRead(buttons, UP) == HIGH){ // Forward
         
@@ -518,10 +548,10 @@ void loop() {
       } // end receive avaiable loop
       
 
-    digitalWrite(LED_G, digitalRead(IR_SENSOR_R));
-    digitalWrite(LED_B, digitalRead(IR_SENSOR_L));
-    digitalWrite(IR_LED_R, 1);
-    digitalWrite(IR_LED_L, 1);
+    //digitalWrite(LED_G, digitalRead(IR_SENSOR_R));
+    //digitalWrite(LED_B, digitalRead(IR_SENSOR_L));
+    //digitalWrite(IR_LED_R, 1);
+    //digitalWrite(IR_LED_L, 1);
     //blinkState != blinkState;
     //digitalWrite(LED_B, blinkState); // Toggle the blue LED
     
