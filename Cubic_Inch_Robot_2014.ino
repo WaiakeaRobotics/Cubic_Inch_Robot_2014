@@ -132,8 +132,8 @@ PID myPID(&input, &output, &setpoint,2,5,1, DIRECT);
 
 //Pull these pins high to enable a specific LED
 //Cathode is connected to 38khz pin
-#define IR_LED_R 1 // IR LED Right used for reflective wall sensing
-#define IR_LED_L 7 // IR LED Left used for reflective wall sensing
+
+#define IR_LED 7 // IR LED Left used for reflective wall sensing
 #define IR_38Khz 3    // IR LED 38khz Cathode connection
 
 #define IR_SENSOR_R 15 // Right input from 38khz bandpass filter connected to IR PIN diode radio
@@ -165,7 +165,7 @@ PID myPID(&input, &output, &setpoint,2,5,1, DIRECT);
 // ===                  Variable Definitions                    ===
 // ================================================================
 
-uint8_t data[1];  // 1 element array of unsigned 8-bit type
+uint8_t data[2];  // 1 element array of unsigned 8-bit type
 
 String message; // Used by radio code - may not be final
 unsigned char buttons; // value of the buttons received from the remote
@@ -182,6 +182,7 @@ bool blinkState1 = false;
 bool blinkState2 = false;
 
 int yaw = 0;
+int battVoltage;
 //int yawStart = 0;
 //int yawDiff = 0;
 
@@ -273,12 +274,10 @@ void setup() {
     digitalWrite(LED_G, 1);
     digitalWrite(LED_B, 1);
     
-    pinMode(IR_LED_R, OUTPUT);
-    pinMode(IR_LED_L, OUTPUT);
+    pinMode(IR_LED, OUTPUT);
     pinMode(IR_38Khz, OUTPUT);
     
-    digitalWrite(IR_LED_R, 0); // 0 = off
-    digitalWrite(IR_LED_L, 0);
+    digitalWrite(IR_LED, 0); // 0 = off
     digitalWrite(IR_38Khz, 0);
     
     pinMode(MOTOR_R_DIR, OUTPUT);
@@ -475,6 +474,8 @@ void loop() {
       Serial.println(buf[0],BIN);
       
       data[0] = map(yaw, 0, 3600, 0, 255);
+      battVoltage = analogRead(BATT_VOLTAGE);
+      data[1] = map(battVoltage,0,1023,0,255);
       nrf24.send(data, sizeof(data));
       nrf24.waitPacketSent();
       Serial.println("Sent a reply");
@@ -548,10 +549,9 @@ void loop() {
       } // end receive avaiable loop
       
 
-    //digitalWrite(LED_G, digitalRead(IR_SENSOR_R));
-    //digitalWrite(LED_B, digitalRead(IR_SENSOR_L));
-    //digitalWrite(IR_LED_R, 1);
-    //digitalWrite(IR_LED_L, 1);
+    digitalWrite(LED_G, digitalRead(IR_SENSOR_R));
+    digitalWrite(LED_B, digitalRead(IR_SENSOR_L));
+    digitalWrite(IR_LED, 1);
     //blinkState != blinkState;
     //digitalWrite(LED_B, blinkState); // Toggle the blue LED
     
