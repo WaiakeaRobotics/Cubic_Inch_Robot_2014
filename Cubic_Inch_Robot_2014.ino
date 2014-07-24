@@ -162,7 +162,6 @@ unsigned char buttons; // value of the buttons received from the remote
 unsigned char buffer; // receive variable
 unsigned char bufferLast; // last received variable
 
-int radioTimeout;
 int receiveCheck;
 
 int iteration=0;
@@ -240,8 +239,8 @@ void setup() {
   
   pinMode(IR_38Khz, OUTPUT);
   
-  digitalWrite(IR_LED_R, 0); // 0 = off
-  digitalWrite(IR_LED_L, 0); // 0 = off
+  digitalWrite(IR_LED_R, 1); // 0 = off
+  digitalWrite(IR_LED_L, 1); // 0 = off
   digitalWrite(IR_38Khz, 0);
   
   pinMode(MOTOR_R_DIR, OUTPUT);
@@ -265,7 +264,7 @@ void setup() {
 
   if (!nrf24.init()) Serial.println("init failed"); // do not comment out these println commands - it will not work
   // Defaults after init are 2.402 GHz (channel 2), 2Mbps, 0dBm
-  if (!nrf24.setChannel(1)) Serial.println("setChannel failed");
+  if (!nrf24.setChannel(90)) Serial.println("setChannel failed");
   if (!nrf24.setRF(RH_NRF24::DataRate2Mbps, RH_NRF24::TransmitPower0dBm)) Serial.println("setRF failed");    
     
 // ================================================================
@@ -302,9 +301,9 @@ void setup() {
 // ================================================================
 
 void loop() {
-     
+     /*
 // ================================================================
-// ===                   GRYO READ AND CALCULATE                ===
+// ===              READ GYRO AND CALCULATE ANGLE               ===
 // ================================================================
   // reset interrupt flag and get INT_STATUS byte
   mpuInterrupt = false;
@@ -374,36 +373,29 @@ void loop() {
     
   } // End gyro update loop
     
-    
-     
+     */
 // ================================================================
 // ===                  READ DATA FROM REMOTE                   ===
 // ================================================================
   
   if (nrf24.available()){ // Is there received data from the remote control?
-   
-
     
-    nrf24.recv(receiveBuffer, &lengthReceive);
+    nrf24.recv(receiveBuffer, &lengthReceive); // receive the available data into the "receivebuffer" variable
     
-    nrf24.send(sendBuffer, sizeof(sendBuffer));
+    nrf24.send(sendBuffer, sizeof(sendBuffer)); // send the data inside the "sendBuffer" variable
     //nrf24.waitPacketSent(); // Now wait for a reply
     
-    radioTimeout = 0;
     timeAway = millis() - lastMillis;
     lastMillis = millis();
 
     buttons = receiveBuffer[0];
     
-    // Send Data
     sendBuffer[0] = map(yaw, 0, 3600, 0, 255);
     battVoltage = analogRead(BATT_VOLTAGE);
     sendBuffer[1] = map(battVoltage,0,1023,0,255);
     sendBuffer[2] = timeAway;
     sendBuffer[3] = timeAwayGyro;
 
-    //Serial.println("Sent a reply");
-    // End Send Data
      
     if (bitRead(buttons, UP) == HIGH){ // Forward
     
@@ -462,10 +454,8 @@ void loop() {
   
   digitalWrite(LED_G, digitalRead(IR_SENSOR_R));
   digitalWrite(LED_B, digitalRead(IR_SENSOR_L));
-  digitalWrite(IR_LED_R, 1); // 1 = on
-  digitalWrite(IR_LED_L, 1);
     
-}
+} // end main loop
 
 
 
