@@ -153,8 +153,8 @@ PID myPID(&input, &output, &setpoint,2,5,1, DIRECT);
 // ===                  Variable Definitions                    ===
 // ================================================================
 
-uint8_t sendBuffer[RH_NRF24_MAX_MESSAGE_LEN];  // 28 element array of unsigned 8-bit type - 28 is the max message length for the nrf24L01 radio
-uint8_t receiveBuffer[RH_NRF24_MAX_MESSAGE_LEN];
+uint8_t sendBuffer[7];  // 28 element array of unsigned 8-bit type - 28 is the max message length for the nrf24L01 radio
+uint8_t receiveBuffer[2];
 uint8_t lengthReceive = sizeof(receiveBuffer);
 
 //String message; // Used by radio code - may not be final
@@ -184,6 +184,8 @@ int slowTimer;
 
 unsigned long lastMillis, timeAway;
 unsigned long lastMillisGyro, timeAwayGyro;
+
+unsigned char sendCounter;
 
 
 // ================================================================
@@ -262,10 +264,10 @@ void setup() {
 // ===               2.4Ghz Transceiver Setup                   ===
 // ================================================================  
 
-  if (!nrf24.init()) Serial.println("init failed"); // do not comment out these println commands - it will not work
+  nrf24.init();
   // Defaults after init are 2.402 GHz (channel 2), 2Mbps, 0dBm
-  if (!nrf24.setChannel(90)) Serial.println("setChannel failed");
-  if (!nrf24.setRF(RH_NRF24::DataRate2Mbps, RH_NRF24::TransmitPower0dBm)) Serial.println("setRF failed");    
+  //nrf24.setChannel(2);
+  //nrf24.setRF(RH_NRF24::DataRate2Mbps, RH_NRF24::TransmitPower0dBm);   
     
 // ================================================================
 // ===                 PID Feedback Loop Setup                   ===
@@ -301,7 +303,7 @@ void setup() {
 // ================================================================
 
 void loop() {
-     /*
+     
 // ================================================================
 // ===              READ GYRO AND CALCULATE ANGLE               ===
 // ================================================================
@@ -373,17 +375,21 @@ void loop() {
     
   } // End gyro update loop
     
-     */
+     
 // ================================================================
 // ===                  READ DATA FROM REMOTE                   ===
 // ================================================================
   
   if (nrf24.available()){ // Is there received data from the remote control?
+   
+    if (nrf24.recv(receiveBuffer, &lengthReceive)){ // receive the available data into the "receivebuffer" variable
     
-    nrf24.recv(receiveBuffer, &lengthReceive); // receive the available data into the "receivebuffer" variable
-    
-    nrf24.send(sendBuffer, sizeof(sendBuffer)); // send the data inside the "sendBuffer" variable
-    //nrf24.waitPacketSent(); // Now wait for a reply
+    sendCounter++;
+    if (sendCounter > 20){
+      sendCounter = 0;
+      nrf24.send(sendBuffer, sizeof(sendBuffer)); // send the data inside the "sendBuffer" variable
+    }
+   
     
     timeAway = millis() - lastMillis;
     lastMillis = millis();
@@ -395,6 +401,7 @@ void loop() {
     sendBuffer[1] = map(battVoltage,0,1023,0,255);
     sendBuffer[2] = timeAway;
     sendBuffer[3] = timeAwayGyro;
+    sendBuffer[4] = buttons;
 
      
     if (bitRead(buttons, UP) == HIGH){ // Forward
@@ -448,6 +455,7 @@ void loop() {
     {
       analogWrite(MOTOR_R_SPD, 0);
       analogWrite(MOTOR_L_SPD, 0);
+    }
     }
   } // end receive avaiable loop
     
