@@ -434,8 +434,8 @@ void loop() {
     if (bitRead(buttons, DOWN) == HIGH){ // Backwards
       digitalWrite(MOTOR_R_DIR, BWD);
       digitalWrite(MOTOR_L_DIR, BWD);
-      analogWrite(MOTOR_R_SPD, 120);
-      analogWrite(MOTOR_L_SPD, 120);
+      analogWrite(MOTOR_R_SPD, 190);
+      analogWrite(MOTOR_L_SPD, 190);
     }
     
     if (bitRead(buttons, LEFT) == HIGH){ // Left
