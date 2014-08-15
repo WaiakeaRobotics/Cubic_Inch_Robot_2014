@@ -385,7 +385,7 @@ void loop() {
     if (nrf24.recv(receiveBuffer, &lengthReceive)){ // receive the available data into the "receivebuffer" variable
     
     sendCounter++;
-    if (sendCounter > 20){
+    if (sendCounter > 20){ // Only send data back to the remote periodically so as to improve the receive speed. 
       sendCounter = 0;
       nrf24.send(sendBuffer, sizeof(sendBuffer)); // send the data inside the "sendBuffer" variable
     }
@@ -402,6 +402,7 @@ void loop() {
     sendBuffer[2] = timeAway;
     sendBuffer[3] = timeAwayGyro;
     sendBuffer[4] = buttons;
+    sendBuffer[4] = output;
 
      
     if (bitRead(buttons, UP) == HIGH){ // Forward
