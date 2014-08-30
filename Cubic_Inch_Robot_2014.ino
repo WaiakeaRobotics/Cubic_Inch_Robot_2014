@@ -317,7 +317,7 @@ void loop() {
   // check for overflow (this should never happen unless our code is too inefficient)
   if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
     // reset so we can continue cleanly
-    mpu.resetFIFO();
+    mpu.resetFIFO();  
     //Serial.println(F("FIFO overflow!"));
     
     // otherwise, check for DMP data ready interrupt (this should happen frequently)
