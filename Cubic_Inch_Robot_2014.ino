@@ -118,6 +118,9 @@ PID myPID(&input, &output, &setpoint,2,5,1, DIRECT);
 #define LED_G 0  // Green LED - Shared with serial port radio pin
 #define LED_B 4  // Blue LED
 
+#define LED_ON 0 // LEDs are active LOW
+#define LED_OFF 1 // LEDs are active LOW
+
 //Pull these pins high to enable a specific LED
 //Cathode is connected to 38khz pin
 
@@ -127,6 +130,10 @@ PID myPID(&input, &output, &setpoint,2,5,1, DIRECT);
 
 #define IR_SENSOR_R 15 // Right input from 38khz bandpass filter connected to IR PIN diode radio
 #define IR_SENSOR_L 16 // 
+
+#define WALL_DETECTED 0 // Wall detected
+#define WALL_NOT_DETECTED 1 // Wall not detected
+
 
 #define MOTOR_R_DIR 5 // Right motor direction pin
 #define MOTOR_R_SPD 9 // Right motor speed pin - apply PWM signal (analog out) to this pin
@@ -266,7 +273,7 @@ void setup() {
 
   nrf24.init();
   // Defaults after init are 2.402 GHz (channel 2), 2Mbps, 0dBm
-  //nrf24.setChannel(2);
+  nrf24.setChannel(2); // Set the desired Transceiver channel valid values are 0-127, in the US only channels 0-83 are within legal bands
   //nrf24.setRF(RH_NRF24::DataRate2Mbps, RH_NRF24::TransmitPower0dBm);   
     
 // ================================================================
@@ -295,8 +302,8 @@ void setup() {
   analogWrite(MOTOR_R_SPD, 0); // Make sure both motors are off
   analogWrite(MOTOR_L_SPD, 0);
       
-  //Serial.println("Hi I'm your Robot");
 }// end setup loop
+
 
 // ================================================================
 // ===                    MAIN PROGRAM LOOP                     ===
@@ -461,8 +468,16 @@ void loop() {
   } // end receive avaiable loop
     
   
-  digitalWrite(LED_G, digitalRead(IR_SENSOR_R));
-  digitalWrite(LED_B, digitalRead(IR_SENSOR_L));
+  digitalWrite(LED_B, digitalRead(IR_SENSOR_L)); // Set the Blue LED to turn ON when the Left IR sensor sees a wall
+  
+  if (digitalRead(IR_SENSOR_R) == WALL_DETECTED) // this if statement does the same thing as the above lines but is written with an IF statement
+  {
+	digitalWrite(LED_G, LED_ON); // Turn ON the Green LED
+  }
+  else
+  {
+	digitalWrite(LED_G, LED_OFF); // Turn OFF the Green LED
+  }
     
 } // end main loop
 
