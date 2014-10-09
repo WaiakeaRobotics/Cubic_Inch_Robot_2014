@@ -128,7 +128,7 @@ PID myPID(&input, &output, &setpoint,2,5,1, DIRECT);
 #define IR_LED_L 7 // IR LED Left used for reflective wall sensing
 #define IR_38Khz 3    // IR LED 38khz Cathode connection
 
-#define IR_SENSOR_R 15 // Right input from 38khz bandpass filter connected to IR PIN diode radio
+#define IR_SENSOR_R 15 // Right input from 38khz bandpass filter connected to IR PIN diode
 #define IR_SENSOR_L 16 // 
 
 #define WALL_DETECTED 0 // Wall detected
@@ -201,7 +201,7 @@ unsigned char sendCounter;
 
 void setup() {
   
-// Serial.begin(115200); // Serial turned off because Green LED uses same pin as RX, IR LED Right uses same pin as TX
+//  Serial.begin(115200); // Serial turned off because Green LED uses same pin as RX, IR LED Right uses same pin as TX
     
 // ================================================================
 // ===                        GYRO SETUP                        ===
@@ -271,19 +271,22 @@ void setup() {
 // ===               2.4Ghz Transceiver Setup                   ===
 // ================================================================  
 
-  nrf24.init();
+  //nrf24.init();
+  
+  if (!nrf24.init())
+    Serial.println("Radio init failed");
   // Defaults after init are 2.402 GHz (channel 2), 2Mbps, 0dBm
   nrf24.setChannel(2); // Set the desired Transceiver channel valid values are 0-127, in the US only channels 0-83 are within legal bands
-  //nrf24.setRF(RH_NRF24::DataRate2Mbps, RH_NRF24::TransmitPower0dBm);   
+  nrf24.setRF(RH_NRF24::DataRate2Mbps, RH_NRF24::TransmitPower0dBm);   
     
 // ================================================================
 // ===                 PID Feedback Loop Setup                   ===
 // ================================================================ 
   
-  setpoint = 0;	
+  setpoint = 1800;	
+  myPID.SetOutputLimits(-40,40);
+  myPID.SetSampleTime(2);
   myPID.SetMode(AUTOMATIC); //Initialize PID parameters
-  myPID.SetOutputLimits(0,100);
-  myPID.SetSampleTime(20);
           
 // ================================================================
 // ===                       38Khz SETUP                        ===
@@ -310,6 +313,7 @@ void setup() {
 // ================================================================
 
 void loop() {
+  
      
 // ================================================================
 // ===              READ GYRO AND CALCULATE ANGLE               ===
@@ -362,14 +366,14 @@ void loop() {
     
     //setpoint = yaw - 90;
     //yawInt = yaw;
-    setpoint = (yaw - 900) % 3600;   // need to see if this works for -180 +180 constraint
+    //setpoint = (yaw - 900) % 3600;   // need to see if this works for -180 +180 constraint
     
      // Serial.print("ypr\t");
      // Serial.print(yaw);           // This is just for debugging will not go into final code
     //Serial.print("\t");
     //Serial.print(setpoint);
      
-    setpoint = 0;
+    //setpoint = 1800; // set in setup
     input = yaw;
     
     myPID.Compute(); // Compute the new PID values based on the setpoint and input values
@@ -408,8 +412,9 @@ void loop() {
     sendBuffer[1] = map(battVoltage,0,1023,0,255);
     sendBuffer[2] = timeAway;
     sendBuffer[3] = timeAwayGyro;
-    sendBuffer[4] = buttons;
-    sendBuffer[4] = output;
+    sendBuffer[4] = output; // Send some new data to the remote here for debugging
+    sendBuffer[5] = map(output,-40,40,0,80);; // Send some new data to the remote here for debugging
+	sendBuffer[6] = 3; // Send some new data to the remote here for debugging
 
      
     if (bitRead(buttons, UP) == HIGH){ // Forward
@@ -437,6 +442,13 @@ void loop() {
       digitalWrite(MOTOR_L_DIR, FWD);
       analogWrite(MOTOR_R_SPD, 255);
       analogWrite(MOTOR_L_SPD, 255);
+    }
+    
+    if (bitRead(buttons, B) == HIGH){ // USE GYRO TO GO STRAIGHT
+      digitalWrite(MOTOR_R_DIR, FWD);
+      digitalWrite(MOTOR_L_DIR, FWD);
+      analogWrite(MOTOR_R_SPD, 128);
+      analogWrite(MOTOR_L_SPD, 128 - output);
     }
     
     if (bitRead(buttons, DOWN) == HIGH){ // Backwards

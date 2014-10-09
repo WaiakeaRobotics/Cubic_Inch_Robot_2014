@@ -26,13 +26,13 @@ PID::PID(double* Input, double* Output, double* Setpoint,
     mySetpoint = Setpoint;
 	inAuto = false;
 	
-	PID::SetOutputLimits(0, 255);				//default output limit corresponds to 
+	PID::SetOutputLimits(-40, 40);				//default output limit corresponds to 
 												//the arduino pwm limits
 
-    SampleTime = 100;							//default Controller Sample Time is 0.1 seconds
+    SampleTime = 3;							//default Controller Sample Time is 0.1 seconds
     
-    inMax = 180;  // max and min for the input used to calculate continuous functions IE rollover from 360 - 0 if using degrees
-    inMin = -180; // currently no way for the user to input these
+    inMax = 3600;  // max and min for the input used to calculate continuous functions IE rollover from 360 - 0 if using degrees
+    inMin = 0; // currently no way for the user to input these
 
     PID::SetControllerDirection(ControllerDirection);
     PID::SetTunings(Kp, Ki, Kd);
