@@ -104,7 +104,7 @@ RH_NRF24 nrf24(8, 14); //CE, CSN
 double setpoint, input, output;
 
 //Specify the links and initial tuning parameters
-PID myPID(&input, &output, &setpoint,2,5,1, DIRECT); 
+PID myPID(&input, &output, &setpoint,.5,0,0, REVERSE);
 // Last input "DIRECT" or "REVERSE" will change which way the correction value goes
 //switch them if the correction  makes things worse
 
@@ -177,6 +177,9 @@ bool blinkState = false;
 bool blinkState1 = false;
 bool blinkState2 = false;
 
+bool startCButton;
+bool startDButton;
+
 int yaw = 0;
 int battVoltage;
 //int yawStart = 0;
@@ -185,6 +188,7 @@ int battVoltage;
 int outputInt;
 
 int forwardRamp;
+int forwardRampD;
 int loopTimer;
 
 int slowTimer;
@@ -284,8 +288,8 @@ void setup() {
 // ================================================================ 
   
   setpoint = 1800;	
-  myPID.SetOutputLimits(-40,40);
-  myPID.SetSampleTime(2);
+  myPID.SetOutputLimits(-10,10);
+  myPID.SetSampleTime(0);
   myPID.SetMode(AUTOMATIC); //Initialize PID parameters
           
 // ================================================================
@@ -374,7 +378,17 @@ void loop() {
     //Serial.print(setpoint);
      
     //setpoint = 1800; // set in setup
-    input = yaw;
+    input = yaw; // done in setup of PID
+    myPID.SetTunings(.05,0,0); // P, I, D tuning parameters set 1.2,0, .01
+    /*
+    P_Param is %OutputSpan/%InputSpan (where % is calculated using the Input and Output Limits)
+    I_Param and D_Param are both seconds
+   
+    Parameters and what they do (sort of)
+    P_Param: the bigger the number the harder the controller pushes.
+    I_Param: the SMALLER the number (except for 0, which turns it off,)  the more quickly the controller reacts to load changes, but the greater the risk of oscillations.
+    D_Param: the bigger the number  the more the controller dampens oscillations (to the point where performance can be hindered)
+    */
     
     myPID.Compute(); // Compute the new PID values based on the setpoint and input values
     
@@ -412,22 +426,22 @@ void loop() {
     sendBuffer[1] = map(battVoltage,0,1023,0,255);
     sendBuffer[2] = timeAway;
     sendBuffer[3] = timeAwayGyro;
-    sendBuffer[4] = output; // Send some new data to the remote here for debugging
-    sendBuffer[5] = map(output,-40,40,0,80);; // Send some new data to the remote here for debugging
-	sendBuffer[6] = 3; // Send some new data to the remote here for debugging
+    sendBuffer[4] = outputInt; // Send some new data to the remote here for debugging
+    sendBuffer[5] = map(outputInt,-40,40,0,80);; // Send some new data to the remote here for debugging
+    sendBuffer[6] = 3; // Send some new data to the remote here for debugging
 
      
     if (bitRead(buttons, UP) == HIGH){ // Forward
     
       
-      if (forwardRamp > 245){ // keep ramp value from overflowing back to 0
-        forwardRamp = 255;
+      if (forwardRamp > 150){ // keep ramp value from overflowing back to 0
+        forwardRamp = 150;
       } 
       else forwardRamp = forwardRamp + 10; // increment ramp value by 1 
       
       digitalWrite(MOTOR_R_DIR, FWD);
       digitalWrite(MOTOR_L_DIR, FWD);
-      analogWrite(MOTOR_R_SPD, forwardRamp);
+      analogWrite(MOTOR_R_SPD, forwardRamp - 22);
       analogWrite(MOTOR_L_SPD, forwardRamp);
       
 
@@ -437,25 +451,74 @@ void loop() {
       loopTimer = 0;
     }  
     
-    if (bitRead(buttons, A) == HIGH){ // Super Speed!
+    if (bitRead(buttons, A) == HIGH){
       digitalWrite(MOTOR_R_DIR, FWD);
       digitalWrite(MOTOR_L_DIR, FWD);
-      analogWrite(MOTOR_R_SPD, 255);
-      analogWrite(MOTOR_L_SPD, 255);
+      analogWrite(MOTOR_R_SPD, 100);
+      analogWrite(MOTOR_L_SPD, 100);
     }
     
     if (bitRead(buttons, B) == HIGH){ // USE GYRO TO GO STRAIGHT
       digitalWrite(MOTOR_R_DIR, FWD);
       digitalWrite(MOTOR_L_DIR, FWD);
-      analogWrite(MOTOR_R_SPD, 128);
-      analogWrite(MOTOR_L_SPD, 128 - output);
+      setpoint = 1800; 
+      analogWrite(MOTOR_R_SPD, 150 + outputInt);
+      analogWrite(MOTOR_L_SPD, 150);
+    }
+    
+    if (bitRead(buttons, C) == HIGH){ // USE GYRO TO GO STRAIGHT
+      if(startCButton == true)
+      {
+        startCButton = false;
+        setpoint = yaw;
+      }
+      
+      digitalWrite(MOTOR_R_DIR, FWD);
+      digitalWrite(MOTOR_L_DIR, FWD);
+       
+      analogWrite(MOTOR_R_SPD, 150 + outputInt);
+      analogWrite(MOTOR_L_SPD, 150);
+    }
+    else
+    {
+      startCButton = true;
+    }
+    
+    if (bitRead(buttons, D) == HIGH){ // USE GYRO TO GO STRAIGHT
+    
+      digitalWrite(MOTOR_R_DIR, FWD);
+      digitalWrite(MOTOR_L_DIR, FWD);
+      
+      if(startDButton == true) // First time running through this function?
+      {
+        startDButton = false;
+        setpoint = yaw;
+      }
+      
+      if (forwardRampD >= 150) // // once full speed reached
+      {
+        analogWrite(MOTOR_R_SPD, forwardRampD + outputInt - 10); //offset output by gyro PID correction value
+        analogWrite(MOTOR_L_SPD, forwardRampD - outputInt);
+      } 
+      else
+      {
+       forwardRampD = forwardRampD + 2; // increment ramp value by 1
+       analogWrite(MOTOR_R_SPD, forwardRampD + (outputInt * (forwardRampD/150 ))); // drive straight by ramp value
+       analogWrite(MOTOR_L_SPD, forwardRampD - (outputInt * (forwardRampD/150 )));
+      }
+      
+    }
+    else
+    {
+      startDButton = true;
+      forwardRampD = 0;
     }
     
     if (bitRead(buttons, DOWN) == HIGH){ // Backwards
       digitalWrite(MOTOR_R_DIR, BWD);
       digitalWrite(MOTOR_L_DIR, BWD);
-      analogWrite(MOTOR_R_SPD, 190);
-      analogWrite(MOTOR_L_SPD, 190);
+      analogWrite(MOTOR_R_SPD, 100);
+      analogWrite(MOTOR_L_SPD, 100);
     }
     
     if (bitRead(buttons, LEFT) == HIGH){ // Left
