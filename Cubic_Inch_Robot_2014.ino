@@ -280,7 +280,7 @@ void setup() {
   if (!nrf24.init())
     Serial.println("Radio init failed");
   // Defaults after init are 2.402 GHz (channel 2), 2Mbps, 0dBm
-  nrf24.setChannel(2); // Set the desired Transceiver channel valid values are 0-127, in the US only channels 0-83 are within legal bands
+  nrf24.setChannel(115); // Set the desired Transceiver channel valid values are 0-127, in the US only channels 0-83 are within legal bands
   nrf24.setRF(RH_NRF24::DataRate2Mbps, RH_NRF24::TransmitPower0dBm);   
     
 // ================================================================
@@ -379,7 +379,7 @@ void loop() {
      
     //setpoint = 1800; // set in setup
     input = yaw; // done in setup of PID
-    myPID.SetTunings(.05,0,0); // P, I, D tuning parameters set 1.2,0, .01
+    
     /*
     P_Param is %OutputSpan/%InputSpan (where % is calculated using the Input and Output Limits)
     I_Param and D_Param are both seconds
@@ -427,7 +427,7 @@ void loop() {
     sendBuffer[2] = timeAway;
     sendBuffer[3] = timeAwayGyro;
     sendBuffer[4] = outputInt; // Send some new data to the remote here for debugging
-    sendBuffer[5] = map(outputInt,-40,40,0,80);; // Send some new data to the remote here for debugging
+    sendBuffer[5] = map(outputInt,-10,10,0,20);; // Send some new data to the remote here for debugging
     sendBuffer[6] = 3; // Send some new data to the remote here for debugging
 
      
@@ -485,7 +485,68 @@ void loop() {
     }
     
     if (bitRead(buttons, D) == HIGH){ // USE GYRO TO GO STRAIGHT
+    // reset interrupt flag and get INT_STATUS byte
     
+    for (int i = 0; i < 1000; i++)
+    { 
+  mpuInterrupt = false;
+  mpuIntStatus = mpu.getIntStatus();
+  
+  // get current FIFO count
+  fifoCount = mpu.getFIFOCount();
+  
+  // check for overflow (this should never happen unless our code is too inefficient)
+  if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
+    // reset so we can continue cleanly
+    mpu.resetFIFO();  
+    //Serial.println(F("FIFO overflow!"));
+    
+    // otherwise, check for DMP data ready interrupt (this should happen frequently)
+  } 
+  else if (mpuIntStatus & 0x02) {
+    // wait for correct available data length, should be a VERY short wait
+    while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
+    
+    timeAwayGyro = millis() - lastMillisGyro;
+    lastMillisGyro = millis();
+    // read a packet from FIFO
+    mpu.getFIFOBytes(fifoBuffer, packetSize);
+    
+    // track FIFO count here in case there is > 1 packet available
+    // (this lets us immediately read more without waiting for an interrupt)
+    fifoCount -= packetSize;
+    
+    // Get the Euler angles in degrees
+    mpu.dmpGetQuaternion(&q, fifoBuffer);
+    mpu.dmpGetGravity(&gravity, &q);
+    mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+    //Serial.print(ypr[0] * 180/M_PI);
+    
+    //yaw = ypr[0] * 57.32;    // Scale -180 to +180 degrees
+    //yaw = yaw + 180;         // Scale to 0 - 360 degrees
+    
+    yaw = ypr[0] * 573.2; // Scale to -1800 - +1800 degrees
+    yaw = yaw + 1800; // Scale to 0 - 3600 degrees
+
+     
+    //setpoint = 1800; // set in setup
+    input = yaw; // done in setup of PID
+    
+    /*
+    P_Param is %OutputSpan/%InputSpan (where % is calculated using the Input and Output Limits)
+    I_Param and D_Param are both seconds
+   
+    Parameters and what they do (sort of)
+    P_Param: the bigger the number the harder the controller pushes.
+    I_Param: the SMALLER the number (except for 0, which turns it off,)  the more quickly the controller reacts to load changes, but the greater the risk of oscillations.
+    D_Param: the bigger the number  the more the controller dampens oscillations (to the point where performance can be hindered)
+    */
+    
+    myPID.Compute(); // Compute the new PID values based on the setpoint and input values
+    
+    //analogWrite(MOTOR_R_SPD,output + 100); // Modify the motor speed based on the PID output
+    
+  }
       digitalWrite(MOTOR_R_DIR, FWD);
       digitalWrite(MOTOR_L_DIR, FWD);
       
@@ -493,6 +554,9 @@ void loop() {
       {
         startDButton = false;
         setpoint = yaw;
+        myPID.SetTunings(.1,0,0); // P, I, D tuning parameters set 1.2,0, .01
+        myPID.SetOutputLimits(-20,20);
+        myPID.SetSampleTime(5);
       }
       
       if (forwardRampD >= 150) // // once full speed reached
@@ -506,7 +570,7 @@ void loop() {
        analogWrite(MOTOR_R_SPD, forwardRampD + (outputInt * (forwardRampD/150 ))); // drive straight by ramp value
        analogWrite(MOTOR_L_SPD, forwardRampD - (outputInt * (forwardRampD/150 )));
       }
-      
+    }
     }
     else
     {
