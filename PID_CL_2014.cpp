@@ -57,7 +57,7 @@ bool PID::Compute()
       /*Compute all the working error variables*/
       double input = *myInput;
       double error = *mySetpoint - input;
-      /*
+      
       if (abs(error) > (inMax - inMin) / 2)
       {
         if (error > 0)
@@ -69,7 +69,7 @@ bool PID::Compute()
 	  error = error + inMax - inMin;
 	}
       }
-      */
+      
       ITerm+= (ki * error);
       if(ITerm > outMax) ITerm= outMax;
       else if(ITerm < outMin) ITerm= outMin;

@@ -177,10 +177,16 @@ bool blinkState = false;
 bool blinkState1 = false;
 bool blinkState2 = false;
 
+bool startAButton;
+bool startBButton;
 bool startCButton;
 bool startDButton;
 
 int yaw = 0;
+int yawLast = 0;
+int yawContinuous = 0;
+int startYawContinuous = 0;
+int yawRotationCount = 0;
 int battVoltage;
 //int yawStart = 0;
 //int yawDiff = 0;
@@ -189,15 +195,33 @@ int outputInt;
 
 int forwardRamp;
 int forwardRampD;
+int forwardRampAuto;
 int loopTimer;
 
 int slowTimer;
 
+int stateMachine;
+
 unsigned long lastMillis, timeAway;
+unsigned long lastMillisAuto;
 unsigned long lastMillisGyro, timeAwayGyro;
 
 unsigned char sendCounter;
 
+// ================================================================
+// ===                  SOFTWARE MOD FUNCTION                   ===
+// ================================================================
+
+int smod(int z1, int z2) { // Software MOD function
+  int ze;
+  ze=z1 % z2;
+  if (ze>=0)  {
+    return(ze);
+  }
+  else{
+    return(z2+ze);
+  }
+}
 
 // ================================================================
 // ===                      INITIAL SETUP                       ===
@@ -361,7 +385,18 @@ void loop() {
     
     yaw = ypr[0] * 573.2; // Scale to -1800 - +1800 degrees
     yaw = yaw + 1800; // Scale to 0 - 3600 degrees
-    //yawStart = 1800; // 10 = 1.0 deg = the angle we are trying to follow
+    
+    if ((yaw > 2700) && (yawLast < 900)) // did tollover occur from low to high = Left 
+    {
+      yawRotationCount --;
+    }
+    else if((yaw < 900) && (yawLast > 1800)) // did rollover occur from high to low = right
+    {
+      yawRotationCount ++;
+    }
+    
+    yawContinuous = yaw + (yawRotationCount * 3600);
+    yawLast = yaw;
     
     //yawDiff = yawStart - yaw;
     //yawDiff = yawDiff % 3600;
@@ -428,42 +463,58 @@ void loop() {
     sendBuffer[3] = timeAwayGyro;
     sendBuffer[4] = outputInt; // Send some new data to the remote here for debugging
     sendBuffer[5] = map(outputInt,-10,10,0,20);; // Send some new data to the remote here for debugging
-    sendBuffer[6] = 3; // Send some new data to the remote here for debugging
+    sendBuffer[6] = stateMachine; // Send some new data to the remote here for debugging
 
      
     if (bitRead(buttons, UP) == HIGH){ // Forward
     
-      
-      if (forwardRamp > 150){ // keep ramp value from overflowing back to 0
-        forwardRamp = 150;
-      } 
-      else forwardRamp = forwardRamp + 10; // increment ramp value by 1 
-      
       digitalWrite(MOTOR_R_DIR, FWD);
       digitalWrite(MOTOR_L_DIR, FWD);
       analogWrite(MOTOR_R_SPD, forwardRamp);
       analogWrite(MOTOR_L_SPD, forwardRamp);
       
-
+      if (forwardRamp > 240) // keep ramp value from overflowing back to 0
+      {
+        forwardRamp = 255;
+      } 
+      else
+      { 
+        forwardRamp = forwardRamp + 10; // increment ramp value by 1
+      }
     }
     else{
       forwardRamp = 30;
       loopTimer = 0;
     }  
     
-    if (bitRead(buttons, A) == HIGH){
-      digitalWrite(MOTOR_R_DIR, FWD);
-      digitalWrite(MOTOR_L_DIR, FWD);
-      analogWrite(MOTOR_R_SPD, 100);
-      analogWrite(MOTOR_L_SPD, 100);
-    }
+    //if (bitRead(buttons, A) == HIGH){ // use gyro to drive at 1800 deg
+    //}
     
-    if (bitRead(buttons, B) == HIGH){ // USE GYRO TO GO STRAIGHT
-      digitalWrite(MOTOR_R_DIR, FWD);
-      digitalWrite(MOTOR_L_DIR, FWD);
-      setpoint = 1800; 
-      analogWrite(MOTOR_R_SPD, 150 + outputInt);
-      analogWrite(MOTOR_L_SPD, 150);
+    if (bitRead(buttons, B) == HIGH){ // Use gyro to turn 1800 deg to the right
+    
+      if(startBButton == true)
+      {
+        startBButton = false;
+        startYawContinuous = yawContinuous;
+        
+        digitalWrite(MOTOR_R_DIR, FWD);
+        digitalWrite(MOTOR_L_DIR, FWD);
+      }
+     
+      if (yawContinuous < (startYawContinuous + 800))
+      {
+        analogWrite(MOTOR_R_SPD, 20);
+        analogWrite(MOTOR_L_SPD, 150);
+      }
+      else
+      {
+        analogWrite(MOTOR_R_SPD, 0);
+        analogWrite(MOTOR_L_SPD, 0);
+      }
+    }
+    else
+    {
+      startBButton = true;
     }
     
     if (bitRead(buttons, C) == HIGH){ // USE GYRO TO GO STRAIGHT
@@ -471,7 +522,7 @@ void loop() {
       {
         startCButton = false;
         setpoint = yaw;
-        myPID.SetTunings(.1,0,0); // P, I, D tuning parameters set 1.2,0, .01
+        myPID.SetTunings(.1,.001,.001); // P, I, D tuning parameters set 1.2,0, .01
         myPID.SetOutputLimits(-20,20);
         myPID.SetSampleTime(0);
       }
@@ -487,73 +538,61 @@ void loop() {
       startCButton = true;
     }
     
-    if (bitRead(buttons, D) == HIGH){ // USE GYRO TO GO STRAIGHT
-    
-    if(startDButton == true) // First time running through this function?
+    if (bitRead(buttons, D) == HIGH) // USE GYRO TO GO STRAIGHT
+    {
+      if(startDButton == true) // First time running through this function?
       {
         startDButton = false;
+        forwardRampD = 30;
         setpoint = yaw;
         myPID.SetTunings(.1,.001,.001); // P, I, D tuning parameters set 1.2,0, .01
         myPID.SetOutputLimits(-5,5);
         myPID.SetSampleTime(0);
       }
-    for (int i = 0; i < 1000; i++)
-    { 
-      mpuInterrupt = false;
-      mpuIntStatus = mpu.getIntStatus();
-      
-      // get current FIFO count
-      fifoCount = mpu.getFIFOCount();
-
-      if ((mpuIntStatus & 0x10) || fifoCount == 1024) { // check for overflow (this should never happen unless our code is too inefficient)
+      for (int i = 0; i < 1000; i++)
+      { 
+        mpuInterrupt = false;
+        mpuIntStatus = mpu.getIntStatus();
         
-        mpu.resetFIFO();  // reset so we can continue cleanly
-
-      } 
-      else if (mpuIntStatus & 0x02) {
-        
-        while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();// wait for correct available data length, should be a VERY short wait
-        timeAwayGyro = millis() - lastMillisGyro;
-        lastMillisGyro = millis();
-        mpu.getFIFOBytes(fifoBuffer, packetSize);
-        fifoCount -= packetSize;
-        mpu.dmpGetQuaternion(&q, fifoBuffer);
-        mpu.dmpGetGravity(&gravity, &q);
-        mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-        yaw = ypr[0] * 573.2; // Scale to -1800 - +1800 degrees
-        yaw = yaw + 1800; // Scale to 0 - 3600 degrees
-        input = yaw; // done in setup of PID
-        
-        /*
-        P_Param is %OutputSpan/%InputSpan (where % is calculated using the Input and Output Limits)
-        I_Param and D_Param are both seconds
-       
-        Parameters and what they do (sort of)
-        P_Param: the bigger the number the harder the controller pushes.
-        I_Param: the SMALLER the number (except for 0, which turns it off,)  the more quickly the controller reacts to load changes, but the greater the risk of oscillations.
-        D_Param: the bigger the number  the more the controller dampens oscillations (to the point where performance can be hindered)
-        */   
+        // get current FIFO count
+        fifoCount = mpu.getFIFOCount();
   
-        if (forwardRampD >= 200) // // once full speed reached
+        //if ((mpuIntStatus & 0x10) || fifoCount == 1024) { // check for overflow (this should never happen unless our code is too inefficient)  
+        //  mpu.resetFIFO();  // reset so we can continue cleanly
+        //} 
+        if (mpuIntStatus & 0x02) 
         {
-          myPID.Compute(); // Compute the new PID values based on the setpoint and input values
-          outputInt = output;
-          analogWrite(MOTOR_R_SPD, forwardRampD + outputInt); //offset output by gyro PID correction value
-          analogWrite(MOTOR_L_SPD, forwardRampD - outputInt);
-        } 
-        else
-        {
-         forwardRampD = forwardRampD + 5; // increment ramp value by 1
-         analogWrite(MOTOR_R_SPD, forwardRampD); // drive straight by ramp value
-         analogWrite(MOTOR_L_SPD, forwardRampD);
-        }
+          while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();// wait for correct available data length, should be a VERY short wait
+          timeAwayGyro = millis() - lastMillisGyro;
+          lastMillisGyro = millis();
+          mpu.getFIFOBytes(fifoBuffer, packetSize);
+          fifoCount -= packetSize;
+          mpu.dmpGetQuaternion(&q, fifoBuffer);
+          mpu.dmpGetGravity(&gravity, &q);
+          mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+          yaw = ypr[0] * 573.2; // Scale to -1800 - +1800 degrees
+          yaw = yaw + 1800; // Scale to 0 - 3600 degrees
+          input = yaw; // done in setup of PID
+    
+          if (forwardRampD > 245) // // once full speed reached
+          {
+            myPID.Compute(); // Compute the new PID values based on the setpoint and input values
+            outputInt = output;
+            analogWrite(MOTOR_R_SPD, 245 + outputInt); //offset output by gyro PID correction value
+            analogWrite(MOTOR_L_SPD, 245 - outputInt);
+          } 
+          else
+          { 
+            analogWrite(MOTOR_R_SPD, forwardRampD); // drive straight by ramp value
+            analogWrite(MOTOR_L_SPD, forwardRampD);
+            forwardRampD = forwardRampD + 5; // increment ramp value by 1
+          }
         } // end gyro read
-      }
-    }
+      }// end for loop
+    }// end button D if statement
     else
     {
       startDButton = true;
-      forwardRampD = 0;
     }
     
     if (bitRead(buttons, DOWN) == HIGH){ // Backwards
@@ -581,6 +620,16 @@ void loop() {
       analogWrite(MOTOR_L_SPD, 0);
     }
     }
+    
+    if (bitRead(buttons, A) == HIGH) // RUN AUTO
+    {
+      AUTO();
+    }
+    else
+    {
+      stateMachine = 0;
+    }
+    
   } // end receive avaiable loop
     
   
@@ -588,30 +637,82 @@ void loop() {
   
   if (digitalRead(IR_SENSOR_R) == WALL_DETECTED) // this if statement does the same thing as the above lines but is written with an IF statement
   {
-	digitalWrite(LED_G, LED_ON); // Turn ON the Green LED
+    digitalWrite(LED_G, LED_ON); // Turn ON the Green LED
   }
   else
   {
-	digitalWrite(LED_G, LED_OFF); // Turn OFF the Green LED
+    digitalWrite(LED_G, LED_OFF); // Turn OFF the Green LED
   }
+    
+    
+
     
 } // end main loop
 
 
-
-
-
-// ================================================================
-// ===                  SOFTWARE MOD FUNCTION                   ===
-// ================================================================
-
-int smod(int z1, int z2) { // Software MOD function
-  int ze;
-  ze=z1 % z2;
-  if (ze>=0)  {
-    return(ze);
+void AUTO()
+{
+  if (stateMachine == 0) // setup millis value
+  {  
+    lastMillisAuto = millis();
+    forwardRampAuto = 30;
+    stateMachine = 1;
+    digitalWrite(MOTOR_R_DIR, FWD);
+    digitalWrite(MOTOR_L_DIR, FWD);
   }
-  else{
-    return(z2+ze);
+  if (stateMachine == 1) // Drive straight to end of first block
+  {
+    
+    if (forwardRampAuto > 245) // // once full speed reached
+    {
+      analogWrite(MOTOR_R_SPD, 225); // turn slightly to the right
+      analogWrite(MOTOR_L_SPD, 245);
+    } 
+    else
+    { 
+      analogWrite(MOTOR_R_SPD, forwardRampAuto); 
+      analogWrite(MOTOR_L_SPD, forwardRampAuto);
+      forwardRampAuto = forwardRampAuto + 5; // increment ramp value
+    }
+    if ((lastMillisAuto + 50) < millis()); // wait 20ms to clear gap before checking right sensor
+    {
+      if (CheckRightSensor() == false)
+      {
+        stateMachine = 2;
+        TurnRightNinetyDegrees(1);
+      }
+    }
+  }
+  if (stateMachine == 2) // Turn right
+  {
+    TurnRightNinetyDegrees(0); // run Turn right and check if done 
+  }
+  if (stateMachine == 3) // Turn right
+  {
+      analogWrite(MOTOR_R_SPD, 0); 
+      analogWrite(MOTOR_L_SPD, 0);
+  }
+} // end auto function
+
+bool CheckRightSensor()
+{
+  return (!digitalRead(IR_SENSOR_R));
+}
+
+void TurnRightNinetyDegrees(char start)
+{
+  if(start == 1)
+  {
+    startYawContinuous = yawContinuous;
+    digitalWrite(MOTOR_R_DIR, FWD);
+    digitalWrite(MOTOR_L_DIR, FWD);
+    analogWrite(MOTOR_R_SPD, 20);
+    analogWrite(MOTOR_L_SPD, 150);
+  }
+
+  if (yawContinuous > (startYawContinuous + 700))
+  {
+    stateMachine ++;
   }
 }
+
