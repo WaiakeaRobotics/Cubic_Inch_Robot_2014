@@ -61,7 +61,8 @@ MPU6050 mpu;
    depends on the MPU-6050's INT pin being connected to the Arduino's
    external interrupt #0 pin. On the Arduino Uno and Mega 2560, this is
    digital I/O pin 2.
- * ========================================================================= */
+ * =====================================
+ ==================================== */
 
 // MPU6050 Gyro control/status vars
 bool dmpReady = false;  // set true if DMP init was successful
@@ -462,7 +463,7 @@ void loop() {
     sendBuffer[2] = timeAway;
     sendBuffer[3] = timeAwayGyro;
     sendBuffer[4] = outputInt; // Send some new data to the remote here for debugging
-    sendBuffer[5] = map(outputInt,-10,10,0,20);; // Send some new data to the remote here for debugging
+    sendBuffer[5] = 23; // Send some new data to the remote here for debugging
     sendBuffer[6] = stateMachine; // Send some new data to the remote here for debugging
 
      
@@ -674,7 +675,7 @@ void AUTO()
       analogWrite(MOTOR_L_SPD, forwardRampAuto);
       forwardRampAuto = forwardRampAuto + 5; // increment ramp value
     }
-    if ((lastMillisAuto + 50) < millis()); // wait 20ms to clear gap before checking right sensor
+    if ((lastMillisAuto + 50) < millis()); // wait 50ms to clear gap before checking right sensor
     {
       if (CheckRightSensor() == false)
       {
@@ -706,7 +707,7 @@ void TurnRightNinetyDegrees(char start)
     startYawContinuous = yawContinuous;
     digitalWrite(MOTOR_R_DIR, FWD);
     digitalWrite(MOTOR_L_DIR, FWD);
-    analogWrite(MOTOR_R_SPD, 20);
+    analogWrite(MOTOR_R_SPD, 25);
     analogWrite(MOTOR_L_SPD, 150);
   }
 
