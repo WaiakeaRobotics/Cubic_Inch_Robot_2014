@@ -49,7 +49,7 @@ versus going down all the way to 10 if it was not aware of the loopover effect o
 // Arduino Wire library is required if I2Cdev I2CDEV_ARDUINO_WIRE implementation
 // is used in I2Cdev.h
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
-    #include "Wire.h"
+#include "Wire.h"
 #endif
 
 // specific I2C addresses may be passed as a parameter here
@@ -231,11 +231,11 @@ int smod(int z1, int z2) { // Software MOD function
 void setup() {
   
 //  Serial.begin(115200); // Serial turned off because Green LED uses same pin as RX, IR LED Right uses same pin as TX
-    
+
 // ================================================================
 // ===                        GYRO SETUP                        ===
 // ================================================================
-  
+
   #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE // join I2C bus (I2Cdev library doesn't do this automatically)
   Wire.begin();
   TWBR = 2; //2 = 800khz I2C - fastest possible data rate
@@ -253,7 +253,7 @@ void setup() {
   
   if (devStatus == 0) { // make sure it worked (returns 0 if so)
     mpu.setDMPEnabled(true);  // turn on the DMP, now that it's ready
-  
+    
     attachInterrupt(0, dmpDataReady, RISING); // enable Arduino interrupt detection
     mpuIntStatus = mpu.getIntStatus();
     
@@ -265,7 +265,7 @@ void setup() {
 // ================================================================
 // ===                     Robot Pin Setup                      ===
 // ================================================================
-  
+
   pinMode(LED_G, OUTPUT); // configure LED for output
   pinMode(LED_B, OUTPUT);
   
@@ -295,34 +295,35 @@ void setup() {
   
   pinMode(IR_SENSOR_R, INPUT);
   pinMode(IR_SENSOR_L, INPUT);
-    
+  
 // ================================================================
 // ===               2.4Ghz Transceiver Setup                   ===
 // ================================================================  
 
-  //nrf24.init();
+  nrf24.init(); // Start the radio!
   
-  if (!nrf24.init())
-    Serial.println("Radio init failed");
+  //if (!nrf24.init())
+  //Serial.println("Radio init failed"); // use this if you have enabled the serial port to check for radio hardware problems
+
   // Defaults after init are 2.402 GHz (channel 2), 2Mbps, 0dBm
-  nrf24.setChannel(2); // Set the desired Transceiver channel valid values are 0-127, in the US only channels 0-83 are within legal bands
-  nrf24.setRF(RH_NRF24::DataRate2Mbps, RH_NRF24::TransmitPower0dBm);   
-    
+  nrf24.setChannel(2); // Set the desired transceiver channel in the US only channels 0-83 are within legal to use bands!! valid values are 0-127
+  nrf24.setRF(RH_NRF24::DataRate2Mbps, RH_NRF24::TransmitPower0dBm);   // 2Mbps is the fastest data rate, 0dbm is the highest transmit power
+  
 // ================================================================
 // ===                 PID Feedback Loop Setup                   ===
 // ================================================================ 
+
+  setpoint = 1800;	// start point - in real uses you should set this to whatever angle you want the robot to go to
+  myPID.SetOutputLimits(-10,10); // these can be changed later on in your specific pid routines
+  myPID.SetSampleTime(6); // sample time in ms this performs filtering, no reason to have it faster than your sensor, our gyro update rate is about 5-6ms right now
+  myPID.SetMode(AUTOMATIC); //Initialize PID parameters -- this enables the PID to calulate the "output" variable, without this the pid does not compute anything
   
-  setpoint = 1800;	
-  myPID.SetOutputLimits(-10,10);
-  myPID.SetSampleTime(0);
-  myPID.SetMode(AUTOMATIC); //Initialize PID parameters
-          
 // ================================================================
 // ===                       38Khz SETUP                        ===
 // ================================================================ 
 
-  pinMode(3, OUTPUT);
-  TCCR2A = _BV(COM2B1) | _BV(WGM21) | _BV(WGM20); // Just enable output on Pin 3 and disable it on Pin 11
+  pinMode(3, OUTPUT); // Set our pwm pin to an output
+  TCCR2A = _BV(COM2B1) | _BV(WGM21) | _BV(WGM20); // Enable compare output on Pin 3 and disable it on Pin 11
   TCCR2B = _BV(WGM22) | _BV(CS22);
   OCR2A = 51; // defines the frequency 51 = 38.4 KHz, 54 = 36.2 KHz, 58 = 34 KHz, 62 = 32 KHz
   OCR2B = 26;  // deines the duty cycle - Half the OCR2A value for 50%
@@ -333,54 +334,41 @@ void setup() {
 // ================================================================  
   analogWrite(MOTOR_R_SPD, 0); // Make sure both motors are off
   analogWrite(MOTOR_L_SPD, 0);
-      
+  
 }// end setup loop
 
-
 // ================================================================
-// ===                    MAIN PROGRAM LOOP                     ===
+// ===                 BEGIN MAIN PROGRAM LOOP                  ===
 // ================================================================
+void loop() 
+{
 
-void loop() {
-  
-     
 // ================================================================
 // ===              READ GYRO AND CALCULATE ANGLE               ===
 // ================================================================
-  // reset interrupt flag and get INT_STATUS byte
-  mpuInterrupt = false;
+  
+  mpuInterrupt = false;// reset interrupt flag and get INT_STATUS byte
   mpuIntStatus = mpu.getIntStatus();
+  fifoCount = mpu.getFIFOCount();// get current FIFO count
   
-  // get current FIFO count
-  fifoCount = mpu.getFIFOCount();
-  
-  // check for overflow (this should never happen unless our code is too inefficient)
-  if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
-    // reset so we can continue cleanly
-    mpu.resetFIFO();  
-    //Serial.println(F("FIFO overflow!"));
-    
-    // otherwise, check for DMP data ready interrupt (this should happen frequently)
+  if ((mpuIntStatus & 0x10) || fifoCount == 1024) // check for overflow (this should never happen unless our code is too inefficient)
+  {
+    mpu.resetFIFO();  // reset so we can continue cleanly
+    //Serial.println(F("FIFO overflow!"))
   } 
-  else if (mpuIntStatus & 0x02) {
-    // wait for correct available data length, should be a VERY short wait
-    while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
+  else if (mpuIntStatus & 0x02) // otherwise, check for DMP data ready interrupt (this should happen frequently)
+  {
+    while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();// wait for correct available data length, should be a VERY short wait
     
     timeAwayGyro = millis() - lastMillisGyro;
-    lastMillisGyro = millis();
-    // read a packet from FIFO
-    mpu.getFIFOBytes(fifoBuffer, packetSize);
+    lastMillisGyro = millis();  
+    mpu.getFIFOBytes(fifoBuffer, packetSize); // read a packet from FIFO
     
-    // track FIFO count here in case there is > 1 packet available
-    // (this lets us immediately read more without waiting for an interrupt)
-    fifoCount -= packetSize;
-    
-    // Get the Euler angles in degrees
-    mpu.dmpGetQuaternion(&q, fifoBuffer);
+    fifoCount -= packetSize;// track FIFO count here in case there is > 1 packet available // (this lets us immediately read more without waiting for an interrupt)
+    mpu.dmpGetQuaternion(&q, fifoBuffer); // Get the Euler angles in degrees
     mpu.dmpGetGravity(&gravity, &q);
     mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-    //Serial.print(ypr[0] * 180/M_PI);
-    
+
     //yaw = ypr[0] * 57.32;    // Scale -180 to +180 degrees
     //yaw = yaw + 180;         // Scale to 0 - 360 degrees
     
@@ -408,12 +396,6 @@ void loop() {
     //yawInt = yaw;
     //setpoint = (yaw - 900) % 3600;   // need to see if this works for -180 +180 constraint
     
-     // Serial.print("ypr\t");
-     // Serial.print(yaw);           // This is just for debugging will not go into final code
-    //Serial.print("\t");
-    //Serial.print(setpoint);
-     
-    //setpoint = 1800; // set in setup
     input = yaw; // done in setup of PID
     
     /*
@@ -427,20 +409,15 @@ void loop() {
     */
     
     myPID.Compute(); // Compute the new PID values based on the setpoint and input values
-    
-    //analogWrite(MOTOR_R_SPD,output + 100); // Modify the motor speed based on the PID output
-    
-    outputInt = output;
-    
-        
-    
+    outputInt = output; // convert the output which I believe is a float to an int
+
   } // End gyro update loop
-    
-     
+  
+  
 // ================================================================
 // ===                  READ DATA FROM REMOTE                   ===
 // ================================================================
-  
+
   if (nrf24.available()){ // Is there received data from the remote control?
    
     if (nrf24.recv(receiveBuffer, &lengthReceive)){ // receive the available data into the "receivebuffer" variable
@@ -450,7 +427,7 @@ void loop() {
       sendCounter = 0;
       nrf24.send(sendBuffer, sizeof(sendBuffer)); // send the data inside the "sendBuffer" variable
     }
-   
+    
     
     timeAway = millis() - lastMillis;
     lastMillis = millis();
@@ -466,9 +443,9 @@ void loop() {
     sendBuffer[5] = 23; // Send some new data to the remote here for debugging
     sendBuffer[6] = stateMachine; // Send some new data to the remote here for debugging
 
-     
-    if (bitRead(buttons, UP) == HIGH){ // Forward
     
+    if (bitRead(buttons, UP) == HIGH){ // Forward
+      
       digitalWrite(MOTOR_R_DIR, FWD);
       digitalWrite(MOTOR_L_DIR, FWD);
       analogWrite(MOTOR_R_SPD, forwardRamp);
@@ -492,7 +469,7 @@ void loop() {
     //}
     
     if (bitRead(buttons, B) == HIGH){ // Use gyro to turn 1800 deg to the right
-    
+      
       if(startBButton == true)
       {
         startBButton = false;
@@ -501,7 +478,7 @@ void loop() {
         digitalWrite(MOTOR_R_DIR, FWD);
         digitalWrite(MOTOR_L_DIR, FWD);
       }
-     
+      
       if (yawContinuous < (startYawContinuous + 800))
       {
         analogWrite(MOTOR_R_SPD, 20);
@@ -530,7 +507,7 @@ void loop() {
       
       digitalWrite(MOTOR_R_DIR, FWD);
       digitalWrite(MOTOR_L_DIR, FWD);
-       
+      
       analogWrite(MOTOR_R_SPD, 150 + outputInt);
       analogWrite(MOTOR_L_SPD, 150);
     }
@@ -557,7 +534,7 @@ void loop() {
         
         // get current FIFO count
         fifoCount = mpu.getFIFOCount();
-  
+        
         //if ((mpuIntStatus & 0x10) || fifoCount == 1024) { // check for overflow (this should never happen unless our code is too inefficient)  
         //  mpu.resetFIFO();  // reset so we can continue cleanly
         //} 
@@ -574,7 +551,7 @@ void loop() {
           yaw = ypr[0] * 573.2; // Scale to -1800 - +1800 degrees
           yaw = yaw + 1800; // Scale to 0 - 3600 degrees
           input = yaw; // done in setup of PID
-    
+          
           if (forwardRampD > 245) // // once full speed reached
           {
             myPID.Compute(); // Compute the new PID values based on the setpoint and input values
@@ -620,8 +597,8 @@ void loop() {
       analogWrite(MOTOR_R_SPD, 0);
       analogWrite(MOTOR_L_SPD, 0);
     }
-    }
-    
+  }
+  
     if (bitRead(buttons, A) == HIGH) // RUN AUTO
     {
       AUTO();
@@ -632,7 +609,7 @@ void loop() {
     }
     
   } // end receive avaiable loop
-    
+  
   
   digitalWrite(LED_B, digitalRead(IR_SENSOR_L)); // Set the Blue LED to turn ON when the Left IR sensor sees a wall
   
@@ -644,10 +621,7 @@ void loop() {
   {
     digitalWrite(LED_G, LED_OFF); // Turn OFF the Green LED
   }
-    
-    
 
-    
 } // end main loop
 
 
@@ -690,8 +664,8 @@ void AUTO()
   }
   if (stateMachine == 3) // Turn right
   {
-      analogWrite(MOTOR_R_SPD, 0); 
-      analogWrite(MOTOR_L_SPD, 0);
+    analogWrite(MOTOR_R_SPD, 0); 
+    analogWrite(MOTOR_L_SPD, 0);
   }
 } // end auto function
 
