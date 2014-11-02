@@ -1,11 +1,12 @@
 {
     "arduino_folder": "C:\\Program Files (x86)\\Arduino", 
     "baudrate": 115200, 
-    "board": 2, 
-    "full_compilation": true, 
+    "board": 1, 
+    "full_compilation": false, 
     "platform": 2, 
     "platform_name": "Arduino AVR Boards", 
     "serial_port": 43, 
     "show_compilation_output": false, 
-    "show_upload_output": true
+    "show_upload_output": true, 
+    "verify_code": true
 }
