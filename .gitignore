@@ -2,6 +2,7 @@
 ## Eclipse
 #################
 
+.sublime-workspace
 *.pydevproject
 .project
 .metadata
