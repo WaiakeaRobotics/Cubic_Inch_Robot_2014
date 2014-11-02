@@ -23,18 +23,18 @@ Programming both the robot and the remote is facilitated by a USB to serial conv
 There is a switch on the remote to select whether the serial port goes to the robot or the remote. 
 The robot is physically connected to the remote control for programming and charging via a magnetic pogo pin connector for ease of use. 
 
-Possibly the remote will also have a serial passthrough mode to allow the computers serial terminal to communicate with the robot remotely.
+Possibly the remote will also have a serial pass-through mode to allow the computers serial terminal to communicate with the robot remotely.
 The other option for reading real time data from the robot is to use the OLED display on the remote as a display terminal. 
 
 Both the robot and remote have 2:1 voltage dividers to allow battery voltage monitoring in real time. 
 
-They are both powered by lithium polymer recharable batteries. 
+They are both powered by lithium polymer rechargeable batteries. 
 The remote contains chargers for both batteries that are powered through the same USB port used for programming. 
 
 The locally included PID library has been modified to allow its use with continuous rotation inputs that roll over. 
 IE with a gyro input from 0 - 360 that will rollover from 360 back to 0 if it is turned further to the right.
 The library had to be modified so it treats 0 and 360 as the same value because it may be faster to go upwards from say 300 degrees to get to 10 degrees 
-versus going down all the way to 10 if it was not aware of the loopover effect of absolute angular data. 
+versus going down all the way to 10 if it was not aware of the loop-over effect of absolute angular data. 
 
 
 */
@@ -46,8 +46,7 @@ versus going down all the way to 10 if it was not aware of the loopover effect o
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 
-// Arduino Wire library is required if I2Cdev I2CDEV_ARDUINO_WIRE implementation
-// is used in I2Cdev.h
+// Arduino Wire library is required if I2Cdev I2CDEV_ARDUINO_WIRE implementation is used in I2Cdev.h
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
 #include "Wire.h"
 #endif
@@ -61,8 +60,7 @@ MPU6050 mpu;
    depends on the MPU-6050's INT pin being connected to the Arduino's
    external interrupt #0 pin. On the Arduino Uno and Mega 2560, this is
    digital I/O pin 2.
- * =====================================
- ==================================== */
+ * ========================================================================= */
 
 // MPU6050 Gyro control/status vars
 bool dmpReady = false;  // set true if DMP init was successful
@@ -144,7 +142,7 @@ PID myPID(&input, &output, &setpoint,.5,0,0, REVERSE);
 #define MOTOR_L_DIR 6
 #define MOTOR_L_SPD 10
 
-#define BATT_VOLTAGE 17 //Battery voltage monitor pin - connected to 50% divider to allow the measurment of voltages higher than the vcc of 3.3v
+#define BATT_VOLTAGE 17 //Battery voltage monitor pin - connected to 50% divider to allow the measurement of voltages higher than the vcc of 3.3v
 
 #define FWD 0 // 0 = forward in our robot wiring
 #define BWD 1 // 1 = backward in our robot wiring
@@ -307,13 +305,12 @@ void setup() {
 // ===               2.4Ghz Transceiver Setup                   ===
 // ================================================================  
 
-  nrf24.init(); // Start the radio!
+  nrf24.init(); // Defaults after init are 2.402 GHz (channel 2), 2Mbps, 0dBm
   
   //if (!nrf24.init())
   //Serial.println("Radio init failed"); // use this if you have enabled the serial port to check for radio hardware problems
 
-  // Defaults after init are 2.402 GHz (channel 2), 2Mbps, 0dBm
-  nrf24.setChannel(2); // Set the desired transceiver channel in the US only channels 0-83 are within legal to use bands!! valid values are 0-127
+  nrf24.setChannel(2); // Set the desired transceiver channel, in the US only channels 0-83 are within legal to use bands!! valid values are 0-127
   nrf24.setRF(RH_NRF24::DataRate2Mbps, RH_NRF24::TransmitPower0dBm);   // 2Mbps is the fastest data rate, 0dbm is the highest transmit power
   
 // ================================================================
@@ -323,7 +320,7 @@ void setup() {
   setpoint = 1800;	// start point - in real uses you should set this to whatever angle you want the robot to go to
   myPID.SetOutputLimits(-10,10); // these can be changed later on in your specific pid routines
   myPID.SetSampleTime(6); // sample time in ms this performs filtering, no reason to have it faster than your sensor, our gyro update rate is about 5-6ms right now
-  myPID.SetMode(AUTOMATIC); //Initialize PID parameters -- this enables the PID to calulate the "output" variable, without this the pid does not compute anything
+  myPID.SetMode(AUTOMATIC); //Initialize PID parameters -- this enables the PID to calculate the "output" variable, without this the pid does not compute anything
   
 // ================================================================
 // ===                       38Khz SETUP                        ===
@@ -333,8 +330,8 @@ void setup() {
   TCCR2A = _BV(COM2B1) | _BV(WGM21) | _BV(WGM20); // Enable compare output on Pin 3 and disable it on Pin 11
   TCCR2B = _BV(WGM22) | _BV(CS22);
   OCR2A = 51; // defines the frequency 51 = 38.4 KHz, 54 = 36.2 KHz, 58 = 34 KHz, 62 = 32 KHz
-  OCR2B = 26;  // deines the duty cycle - Half the OCR2A value for 50%
-  TCCR2B = TCCR2B & 0b00111000 | 0x2; // select a prescale value of 8:1 of the system clock
+  OCR2B = 26;  // defines the duty cycle - Half the OCR2A value for 50%
+  TCCR2B = TCCR2B & 0b00111000 | 0x2; // select a pre-scale value of 8:1 of the system clock
   
 // ================================================================
 // ===           FINAL ACTIONS BEFORE EXITING SETUP             ===
@@ -382,7 +379,7 @@ void loop()
     yaw = ypr[0] * 573.2; // Scale to -1800 - +1800 degrees
     yaw = yaw + 1800; // Scale to 0 - 3600 degrees
     
-    if ((yaw > 2700) && (yawLast < 900)) // did tollover occur from low to high = Left 
+    if ((yaw > 2700) && (yawLast < 900)) // did rollover occur from low to high = Left 
     {
       yawRotationCount --;
     }
@@ -448,7 +445,6 @@ void loop()
       sendBuffer[5] = 23; // Send some new data to the remote here for debugging
       sendBuffer[6] = stateMachine; // Send some new data to the remote here for debugging
 
-      
       if (bitRead(buttons, UP) == HIGH)// Forward
       {
         digitalWrite(MOTOR_R_DIR, FWD);
@@ -567,7 +563,7 @@ void loop()
             
             if (forwardRampD > 245) // // once full speed reached
             {
-              myPID.Compute(); // Compute the new PID values based on the setpoint and input values
+              myPID.Compute(); // Compute the new PID values based on the set point and input values
               outputInt = output;
               analogWrite(MOTOR_R_SPD, 245 + outputInt); //offset output by gyro PID correction value
               analogWrite(MOTOR_L_SPD, 245 - outputInt);
@@ -613,12 +609,8 @@ void loop()
         analogWrite(MOTOR_R_SPD, 0);
         analogWrite(MOTOR_L_SPD, 0);
       }
-    }
-
-
-    
-  } // end receive avaiable loop
-  
+    } 
+  } // end receive available loop
   
   digitalWrite(LED_B, digitalRead(IR_SENSOR_L)); // Set the Blue LED to turn ON when the Left IR sensor sees a wall
   
@@ -632,7 +624,6 @@ void loop()
   }
 
 } // end main loop
-
 
 void AUTO()
 {

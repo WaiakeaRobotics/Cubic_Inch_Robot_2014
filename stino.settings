@@ -6,6 +6,7 @@
     "platform": 2, 
     "platform_name": "Arduino AVR Boards", 
     "serial_port": 43, 
+    "set_bare_gcc_only": false, 
     "show_compilation_output": false, 
     "show_upload_output": true, 
     "verify_code": true
