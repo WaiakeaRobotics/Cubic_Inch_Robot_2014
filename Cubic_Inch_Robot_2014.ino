@@ -213,13 +213,16 @@ unsigned char sendCounter;
 // ===                  SOFTWARE MOD FUNCTION                   ===
 // ================================================================
 
-int smod(int z1, int z2) { // Software MOD function
+int smod(int z1, int z2)  // Software MOD function
+{
   int ze;
   ze=z1 % z2;
-  if (ze>=0)  {
+  if (ze>=0)  
+  {
     return(ze);
   }
-  else{
+  else
+  {
     return(z2+ze);
   }
 }
@@ -229,7 +232,7 @@ int smod(int z1, int z2) { // Software MOD function
 // ================================================================
 
 void setup() {
-  
+
 //  Serial.begin(115200); // Serial turned off because Green LED uses same pin as RX, IR LED Right uses same pin as TX
 
 // ================================================================
@@ -251,7 +254,8 @@ void setup() {
   mpu.setZGyroOffset(-85);
   mpu.setZAccelOffset(1788); // 1688 factory default for my test chip
   
-  if (devStatus == 0) { // make sure it worked (returns 0 if so)
+  if (devStatus == 0)  // make sure it worked (returns 0 if so)
+  {
     mpu.setDMPEnabled(true);  // turn on the DMP, now that it's ready
     
     attachInterrupt(0, dmpDataReady, RISING); // enable Arduino interrupt detection
@@ -346,7 +350,7 @@ void loop()
 // ================================================================
 // ===              READ GYRO AND CALCULATE ANGLE               ===
 // ================================================================
-  
+
   mpuInterrupt = false;// reset interrupt flag and get INT_STATUS byte
   mpuIntStatus = mpu.getIntStatus();
   fifoCount = mpu.getFIFOCount();// get current FIFO count
@@ -412,201 +416,203 @@ void loop()
     outputInt = output; // convert the output which I believe is a float to an int
 
   } // End gyro update loop
-  
-  
+
 // ================================================================
 // ===                  READ DATA FROM REMOTE                   ===
 // ================================================================
 
   if (nrf24.available()){ // Is there received data from the remote control?
-   
-    if (nrf24.recv(receiveBuffer, &lengthReceive)){ // receive the available data into the "receivebuffer" variable
-    
-    sendCounter++;
-    if (sendCounter > 20){ // Only send data back to the remote periodically so as to improve the receive speed. 
-      sendCounter = 0;
-      nrf24.send(sendBuffer, sizeof(sendBuffer)); // send the data inside the "sendBuffer" variable
-    }
-    
-    
-    timeAway = millis() - lastMillis;
-    lastMillis = millis();
-
-    buttons = receiveBuffer[0];
-    
-    sendBuffer[0] = map(yaw, 0, 3600, 0, 255);
-    battVoltage = analogRead(BATT_VOLTAGE);
-    sendBuffer[1] = map(battVoltage,0,1023,0,255);
-    sendBuffer[2] = timeAway;
-    sendBuffer[3] = timeAwayGyro;
-    sendBuffer[4] = outputInt; // Send some new data to the remote here for debugging
-    sendBuffer[5] = 23; // Send some new data to the remote here for debugging
-    sendBuffer[6] = stateMachine; // Send some new data to the remote here for debugging
-
-    
-    if (bitRead(buttons, UP) == HIGH){ // Forward
-      
-      digitalWrite(MOTOR_R_DIR, FWD);
-      digitalWrite(MOTOR_L_DIR, FWD);
-      analogWrite(MOTOR_R_SPD, forwardRamp);
-      analogWrite(MOTOR_L_SPD, forwardRamp);
-      
-      if (forwardRamp > 240) // keep ramp value from overflowing back to 0
+    if (nrf24.recv(receiveBuffer, &lengthReceive)) // receive the available data into the "receivebuffer" variable
+    {
+      sendCounter++;
+      if (sendCounter > 20) // Only send data back to the remote periodically so as to improve the receive speed. 
       {
-        forwardRamp = 255;
-      } 
-      else
-      { 
-        forwardRamp = forwardRamp + 10; // increment ramp value by 1
+        sendCounter = 0;
+        nrf24.send(sendBuffer, sizeof(sendBuffer)); // send the data inside the "sendBuffer" variable
       }
-    }
-    else{
-      forwardRamp = 30;
-      loopTimer = 0;
-    }  
-    
-    //if (bitRead(buttons, A) == HIGH){ // use gyro to drive at 1800 deg
-    //}
-    
-    if (bitRead(buttons, B) == HIGH){ // Use gyro to turn 1800 deg to the right
+
+      timeAway = millis() - lastMillis;
+      lastMillis = millis();
+
+      buttons = receiveBuffer[0];
       
-      if(startBButton == true)
+      sendBuffer[0] = map(yaw, 0, 3600, 0, 255);
+      battVoltage = analogRead(BATT_VOLTAGE);
+      sendBuffer[1] = map(battVoltage,0,1023,0,255);
+      sendBuffer[2] = timeAway;
+      sendBuffer[3] = timeAwayGyro;
+      sendBuffer[4] = outputInt; // Send some new data to the remote here for debugging
+      sendBuffer[5] = 23; // Send some new data to the remote here for debugging
+      sendBuffer[6] = stateMachine; // Send some new data to the remote here for debugging
+
+      
+      if (bitRead(buttons, UP) == HIGH)// Forward
       {
-        startBButton = false;
-        startYawContinuous = yawContinuous;
+        digitalWrite(MOTOR_R_DIR, FWD);
+        digitalWrite(MOTOR_L_DIR, FWD);
+        analogWrite(MOTOR_R_SPD, forwardRamp);
+        analogWrite(MOTOR_L_SPD, forwardRamp);
+        
+        if (forwardRamp > 240) // keep ramp value from overflowing back to 0
+        {
+          forwardRamp = 255;
+        } 
+        else
+        { 
+          forwardRamp = forwardRamp + 10; // increment ramp value by 1
+        }
+      }
+      else
+      {
+        forwardRamp = 30;
+        loopTimer = 0;
+      }  
+      
+      if (bitRead(buttons, A) == HIGH) // RUN AUTO
+      {
+        AUTO();
+      }
+      else
+      {
+        stateMachine = 0;
+      }
+      
+      if (bitRead(buttons, B) == HIGH) // Use gyro to turn 1800 deg to the right
+      {  
+        if(startBButton == true)
+        {
+          startBButton = false;
+          startYawContinuous = yawContinuous;
+          
+          digitalWrite(MOTOR_R_DIR, FWD);
+          digitalWrite(MOTOR_L_DIR, FWD);
+        }
+        
+        if (yawContinuous < (startYawContinuous + 800))
+        {
+          analogWrite(MOTOR_R_SPD, 20);
+          analogWrite(MOTOR_L_SPD, 150);
+        }
+        else
+        {
+          analogWrite(MOTOR_R_SPD, 0);
+          analogWrite(MOTOR_L_SPD, 0);
+        }
+      }
+      else
+      {
+        startBButton = true;
+      }
+      
+      if (bitRead(buttons, C) == HIGH) // USE GYRO TO GO STRAIGHT
+      { 
+        if(startCButton == true)
+        {
+          startCButton = false;
+          setpoint = yaw;
+          myPID.SetTunings(.1,.001,.001); // P, I, D tuning parameters set 1.2,0, .01
+          myPID.SetOutputLimits(-20,20);
+          myPID.SetSampleTime(0);
+        }
         
         digitalWrite(MOTOR_R_DIR, FWD);
         digitalWrite(MOTOR_L_DIR, FWD);
-      }
-      
-      if (yawContinuous < (startYawContinuous + 800))
-      {
-        analogWrite(MOTOR_R_SPD, 20);
+        
+        analogWrite(MOTOR_R_SPD, 150 + outputInt);
         analogWrite(MOTOR_L_SPD, 150);
       }
       else
+      {
+        startCButton = true;
+      }
+      
+      if (bitRead(buttons, D) == HIGH) // USE GYRO TO GO STRAIGHT
+      {
+        if(startDButton == true) // First time running through this function?
+        {
+          startDButton = false;
+          forwardRampD = 30;
+          setpoint = yaw;
+          myPID.SetTunings(.1,.001,.001); // P, I, D tuning parameters set 1.2,0, .01
+          myPID.SetOutputLimits(-5,5);
+          myPID.SetSampleTime(0);
+        }
+        for (int i = 0; i < 1000; i++)
+        { 
+          mpuInterrupt = false;
+          mpuIntStatus = mpu.getIntStatus();
+          
+          // get current FIFO count
+          fifoCount = mpu.getFIFOCount();
+          
+          //if ((mpuIntStatus & 0x10) || fifoCount == 1024) { // check for overflow (this should never happen unless our code is too inefficient)  
+          //  mpu.resetFIFO();  // reset so we can continue cleanly
+          //} 
+          if (mpuIntStatus & 0x02) 
+          {
+            while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();// wait for correct available data length, should be a VERY short wait
+            timeAwayGyro = millis() - lastMillisGyro;
+            lastMillisGyro = millis();
+            mpu.getFIFOBytes(fifoBuffer, packetSize);
+            fifoCount -= packetSize;
+            mpu.dmpGetQuaternion(&q, fifoBuffer);
+            mpu.dmpGetGravity(&gravity, &q);
+            mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+            yaw = ypr[0] * 573.2; // Scale to -1800 - +1800 degrees
+            yaw = yaw + 1800; // Scale to 0 - 3600 degrees
+            input = yaw; // done in setup of PID
+            
+            if (forwardRampD > 245) // // once full speed reached
+            {
+              myPID.Compute(); // Compute the new PID values based on the setpoint and input values
+              outputInt = output;
+              analogWrite(MOTOR_R_SPD, 245 + outputInt); //offset output by gyro PID correction value
+              analogWrite(MOTOR_L_SPD, 245 - outputInt);
+            } 
+            else
+            { 
+              analogWrite(MOTOR_R_SPD, forwardRampD); // drive straight by ramp value
+              analogWrite(MOTOR_L_SPD, forwardRampD);
+              forwardRampD = forwardRampD + 5; // increment ramp value by 1
+            }
+          } // end gyro read
+        }// end for loop
+      }// end button D if statement
+      else
+      {
+        startDButton = true;
+      }
+      
+      if (bitRead(buttons, DOWN) == HIGH) // Backwards
+      {
+        digitalWrite(MOTOR_R_DIR, BWD);
+        digitalWrite(MOTOR_L_DIR, BWD);
+        analogWrite(MOTOR_R_SPD, 100);
+        analogWrite(MOTOR_L_SPD, 100);
+      }
+      if (bitRead(buttons, LEFT) == HIGH) // Left
+      {
+        digitalWrite(MOTOR_R_DIR, FWD);
+        digitalWrite(MOTOR_L_DIR, BWD);
+        analogWrite(MOTOR_R_SPD, 50);
+        analogWrite(MOTOR_L_SPD, 50);
+      }
+      else if (bitRead(buttons, RIGHT) == HIGH) // Right
+      {
+        digitalWrite(MOTOR_R_DIR, BWD);
+        digitalWrite(MOTOR_L_DIR, FWD);
+        analogWrite(MOTOR_R_SPD, 50);
+        analogWrite(MOTOR_L_SPD, 50);
+      } 
+      
+      if (buttons == 0) // No buttons pushed
       {
         analogWrite(MOTOR_R_SPD, 0);
         analogWrite(MOTOR_L_SPD, 0);
       }
     }
-    else
-    {
-      startBButton = true;
-    }
-    
-    if (bitRead(buttons, C) == HIGH){ // USE GYRO TO GO STRAIGHT
-      if(startCButton == true)
-      {
-        startCButton = false;
-        setpoint = yaw;
-        myPID.SetTunings(.1,.001,.001); // P, I, D tuning parameters set 1.2,0, .01
-        myPID.SetOutputLimits(-20,20);
-        myPID.SetSampleTime(0);
-      }
-      
-      digitalWrite(MOTOR_R_DIR, FWD);
-      digitalWrite(MOTOR_L_DIR, FWD);
-      
-      analogWrite(MOTOR_R_SPD, 150 + outputInt);
-      analogWrite(MOTOR_L_SPD, 150);
-    }
-    else
-    {
-      startCButton = true;
-    }
-    
-    if (bitRead(buttons, D) == HIGH) // USE GYRO TO GO STRAIGHT
-    {
-      if(startDButton == true) // First time running through this function?
-      {
-        startDButton = false;
-        forwardRampD = 30;
-        setpoint = yaw;
-        myPID.SetTunings(.1,.001,.001); // P, I, D tuning parameters set 1.2,0, .01
-        myPID.SetOutputLimits(-5,5);
-        myPID.SetSampleTime(0);
-      }
-      for (int i = 0; i < 1000; i++)
-      { 
-        mpuInterrupt = false;
-        mpuIntStatus = mpu.getIntStatus();
-        
-        // get current FIFO count
-        fifoCount = mpu.getFIFOCount();
-        
-        //if ((mpuIntStatus & 0x10) || fifoCount == 1024) { // check for overflow (this should never happen unless our code is too inefficient)  
-        //  mpu.resetFIFO();  // reset so we can continue cleanly
-        //} 
-        if (mpuIntStatus & 0x02) 
-        {
-          while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();// wait for correct available data length, should be a VERY short wait
-          timeAwayGyro = millis() - lastMillisGyro;
-          lastMillisGyro = millis();
-          mpu.getFIFOBytes(fifoBuffer, packetSize);
-          fifoCount -= packetSize;
-          mpu.dmpGetQuaternion(&q, fifoBuffer);
-          mpu.dmpGetGravity(&gravity, &q);
-          mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-          yaw = ypr[0] * 573.2; // Scale to -1800 - +1800 degrees
-          yaw = yaw + 1800; // Scale to 0 - 3600 degrees
-          input = yaw; // done in setup of PID
-          
-          if (forwardRampD > 245) // // once full speed reached
-          {
-            myPID.Compute(); // Compute the new PID values based on the setpoint and input values
-            outputInt = output;
-            analogWrite(MOTOR_R_SPD, 245 + outputInt); //offset output by gyro PID correction value
-            analogWrite(MOTOR_L_SPD, 245 - outputInt);
-          } 
-          else
-          { 
-            analogWrite(MOTOR_R_SPD, forwardRampD); // drive straight by ramp value
-            analogWrite(MOTOR_L_SPD, forwardRampD);
-            forwardRampD = forwardRampD + 5; // increment ramp value by 1
-          }
-        } // end gyro read
-      }// end for loop
-    }// end button D if statement
-    else
-    {
-      startDButton = true;
-    }
-    
-    if (bitRead(buttons, DOWN) == HIGH){ // Backwards
-      digitalWrite(MOTOR_R_DIR, BWD);
-      digitalWrite(MOTOR_L_DIR, BWD);
-      analogWrite(MOTOR_R_SPD, 100);
-      analogWrite(MOTOR_L_SPD, 100);
-    }
-    if (bitRead(buttons, LEFT) == HIGH){ // Left
-      digitalWrite(MOTOR_R_DIR, FWD);
-      digitalWrite(MOTOR_L_DIR, BWD);
-      analogWrite(MOTOR_R_SPD, 50);
-      analogWrite(MOTOR_L_SPD, 50);
-    }
-    else if (bitRead(buttons, RIGHT) == HIGH){ // Right
-      digitalWrite(MOTOR_R_DIR, BWD);
-      digitalWrite(MOTOR_L_DIR, FWD);
-      analogWrite(MOTOR_R_SPD, 50);
-      analogWrite(MOTOR_L_SPD, 50);
-    } 
-    
-    if (buttons == 0) // No buttons pushed
-    {
-      analogWrite(MOTOR_R_SPD, 0);
-      analogWrite(MOTOR_L_SPD, 0);
-    }
-  }
-  
-    if (bitRead(buttons, A) == HIGH) // RUN AUTO
-    {
-      AUTO();
-    }
-    else
-    {
-      stateMachine = 0;
-    }
+
+
     
   } // end receive avaiable loop
   
@@ -637,7 +643,7 @@ void AUTO()
   }
   if (stateMachine == 1) // Drive straight to end of first block
   {
-    
+
     if (forwardRampAuto > 245) // // once full speed reached
     {
       analogWrite(MOTOR_R_SPD, 225); // turn slightly to the right
