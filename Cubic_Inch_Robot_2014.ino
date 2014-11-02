@@ -113,9 +113,9 @@ PID myPID(&input, &output, &setpoint,.5,0,0, REVERSE);
 // ===                    Robot Pin Defines                     ===
 // ================================================================
 
-// Lets define some nice handy constants eh?
+// Lets define some nice handy constants eh? no more remembering pin numbers.
 
-#define LED_R 13 // Red LED - Shared with SCK used for NRF24L01 Transceiver
+#define LED_R 13 // Red LED - Shared with SCK used for NRF24L01 Transceiver so not really usable while the radio is turned on
 #define LED_G 0  // Green LED - Shared with serial port radio pin
 #define LED_B 4  // Blue LED
 
@@ -125,6 +125,9 @@ PID myPID(&input, &output, &setpoint,.5,0,0, REVERSE);
 //Pull these pins high to enable a specific LED
 //Cathode is connected to 38khz pin
 
+// IR_LED_R and L are not used in newest hacked hardware.. just leave them on all the time and use the extra pin for more indicator LEDs on future versions
+// the IR LEds are now driven through a SOT-23 mosfet and 47 ohm resistors from 3.3v for longer range. 
+// the IR PIN diodes each have 1k - 2k resistors in parallel to lower sensitivity. 
 #define IR_LED_R 1 // IR LED Left used for reflective wall sensing
 #define IR_LED_L 7 // IR LED Left used for reflective wall sensing
 #define IR_38Khz 3    // IR LED 38khz Cathode connection
