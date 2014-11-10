@@ -415,10 +415,10 @@ void loop() {
     if (bitRead(buttons, UP) == HIGH){ // Forward
     
       
-      if (forwardRamp > 245){ // keep ramp value from overflowing back to 0
-        forwardRamp = 255;
+      if (forwardRamp > 190){ // keep ramp value from overflowing back to 0
+        forwardRamp = 190;
       } 
-      else forwardRamp = forwardRamp + 10; // increment ramp value by 1 
+      else forwardRamp = forwardRamp + 2; // increment ramp value by 1 
       
       digitalWrite(MOTOR_R_DIR, FWD);
       digitalWrite(MOTOR_L_DIR, FWD);
@@ -428,7 +428,7 @@ void loop() {
 
     }
     else{
-      forwardRamp = 30;
+      forwardRamp = 00;
       loopTimer = 0;
     }  
     
@@ -442,21 +442,21 @@ void loop() {
     if (bitRead(buttons, DOWN) == HIGH){ // Backwards
       digitalWrite(MOTOR_R_DIR, BWD);
       digitalWrite(MOTOR_L_DIR, BWD);
-      analogWrite(MOTOR_R_SPD, 190);
-      analogWrite(MOTOR_L_SPD, 190);
+      analogWrite(MOTOR_R_SPD, 120);
+      analogWrite(MOTOR_L_SPD, 120);
     }
     
     if (bitRead(buttons, LEFT) == HIGH){ // Left
       digitalWrite(MOTOR_R_DIR, FWD);
       digitalWrite(MOTOR_L_DIR, BWD);
-      analogWrite(MOTOR_R_SPD, 50);
-      analogWrite(MOTOR_L_SPD, 50);
+      analogWrite(MOTOR_R_SPD, 80);
+      analogWrite(MOTOR_L_SPD, 80);
     }
     else if (bitRead(buttons, RIGHT) == HIGH){ // Right
       digitalWrite(MOTOR_R_DIR, BWD);
       digitalWrite(MOTOR_L_DIR, FWD);
-      analogWrite(MOTOR_R_SPD, 50);
-      analogWrite(MOTOR_L_SPD, 50);
+      analogWrite(MOTOR_R_SPD, 80);
+      analogWrite(MOTOR_L_SPD, 80);
     } 
     
     if (buttons == 0) // No buttons pushed

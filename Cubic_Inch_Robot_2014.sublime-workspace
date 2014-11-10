@@ -1,0 +1,266 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "Cubic_Inch_Robot_2014.ino",
+			"settings":
+			{
+				"buffer_size": 26524,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "/C/Users/hilo90mhz/Documents/GitHub/Cubic_Inch_Remote_2014/Cubic_Inch_Remote_2014.ino",
+			"settings":
+			{
+				"buffer_size": 11126,
+				"line_ending": "Windows"
+			}
+		}
+	],
+	"build_system": "",
+	"command_palette":
+	{
+		"height": 311.0,
+		"selected_items":
+		[
+			[
+				"Package Control: ",
+				"Package Control: Install Package"
+			]
+		],
+		"width": 400.0
+	},
+	"console":
+	{
+		"height": 174.0,
+		"history":
+		[
+			"import urllib.request,os,hashlib; h = '7183a2d3e96f11eeadd761d777e62404' + 'e330c659d4bb41d3bdf022e94cab3cd0'; pf = 'Package Control.sublime-package'; ipp = sublime.installed_packages_path(); urllib.request.install_opener( urllib.request.build_opener( urllib.request.ProxyHandler()) ); by = urllib.request.urlopen( 'http://packagecontrol.io/' + pf.replace(' ', '%20')).read(); dh = hashlib.sha256(by).hexdigest(); print('Error validating download (got %s instead of %s), please try manual install' % (dh, h)) if dh != h else open(os.path.join( ipp, pf), 'wb' ).write(by)"
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/C/Users/hilo90mhz/Documents/GitHub/Cubic_Inch_Robot_2014",
+		"/C/Users/hilo90mhz/Documents/GitHub/Cubic_Inch_Remote_2014"
+	],
+	"file_history":
+	[
+		"/C/Users/hilo90mhz/Documents/lost",
+		"/C/Users/hilo90mhz/Documents/GitHub/Cubic_Inch_Robot_2014/Cubic_Inch_Robot_2014.ino",
+		"/C/Users/hilo90mhz/Documents/GitHub/Cubic_Inch_Robot_2014/PID_CL_2014.h",
+		"/C/Users/hilo90mhz/Documents/GitHub/Cubic_Inch_Robot_2014/PID_CL_2014.cpp",
+		"/C/Users/hilo90mhz/Documents/GitHub/Cubic_Inch_Robot_2014/Cubic_Inch_Robot_2014.sublime-project",
+		"/C/Users/hilo90mhz/Documents/GitHub/Cubic_Inch_Robot_2014/stino.settings",
+		"/C/Users/hilo90mhz/Google Drive/Arduino/Cubic_Inch_Robot_2014/PID_CL_2014.cpp",
+		"/C/Users/hilo90mhz/Google Drive/Arduino/Cubic_Inch_Robot_2014/Cubic_Inch_Robot_2014.ino",
+		"/C/Users/hilo90mhz/Google Drive/Arduino/Microbot_CI_2014_V1_0_0b/Microbot_CI_2014_V1_0_0b.ino"
+	],
+	"find":
+	{
+		"height": 39.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"pid"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 0,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "Cubic_Inch_Robot_2014.ino",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 26524,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								13192,
+								13192
+							]
+						],
+						"settings":
+						{
+							"rulers":
+							[
+							],
+							"spell_check": false,
+							"syntax": "Packages/Arduino-like IDE/Arduino.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true,
+							"word_wrap": false,
+							"wrap_width": 80
+						},
+						"translation.x": 0.0,
+						"translation.y": 11860.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "/C/Users/hilo90mhz/Documents/GitHub/Cubic_Inch_Remote_2014/Cubic_Inch_Remote_2014.ino",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 11126,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								11126,
+								11126
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Arduino-like IDE/Arduino.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 2173.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 39.0
+	},
+	"input":
+	{
+		"height": 38.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.Cubic_Inch_Remote_2014":
+	{
+		"height": 198.0
+	},
+	"output.Cubic_Inch_Robot_2014":
+	{
+		"height": 198.0
+	},
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"project": "Cubic_Inch_Robot_2014.sublime-project",
+	"replace":
+	{
+		"height": 74.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 470.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}
