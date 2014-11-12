@@ -11,7 +11,7 @@
 			"file": "Cubic_Inch_Robot_2014.ino",
 			"settings":
 			{
-				"buffer_size": 26524,
+				"buffer_size": 19224,
 				"line_ending": "Windows"
 			}
 		},
@@ -61,8 +61,11 @@
 	],
 	"file_history":
 	[
-		"/C/Users/hilo90mhz/Documents/lost",
+		"/C/Users/hilo90mhz/Documents/GitHub/Cubic_Inch_Remote_2014/Cubic_Inch_Remote_2014.ino",
 		"/C/Users/hilo90mhz/Documents/GitHub/Cubic_Inch_Robot_2014/Cubic_Inch_Robot_2014.ino",
+		"/C/Users/hilo90mhz/Google Drive/Arduino/Chester_Robot_CC/Chester_Robot_CC.ino",
+		"/C/Users/hilo90mhz/Google Drive/Microbots Waiakea/Programming/Chesters Code/Chester_Robot_CC/Chester_Robot_CC.ino",
+		"/C/Users/hilo90mhz/Documents/lost",
 		"/C/Users/hilo90mhz/Documents/GitHub/Cubic_Inch_Robot_2014/PID_CL_2014.h",
 		"/C/Users/hilo90mhz/Documents/GitHub/Cubic_Inch_Robot_2014/PID_CL_2014.cpp",
 		"/C/Users/hilo90mhz/Documents/GitHub/Cubic_Inch_Robot_2014/Cubic_Inch_Robot_2014.sublime-project",
@@ -114,31 +117,25 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 26524,
+						"buffer_size": 19224,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								13192,
-								13192
+								18258,
+								18258
 							]
 						],
 						"settings":
 						{
-							"rulers":
-							[
-							],
-							"spell_check": false,
 							"syntax": "Packages/Arduino-like IDE/Arduino.tmLanguage",
 							"tab_size": 2,
-							"translate_tabs_to_spaces": true,
-							"word_wrap": false,
-							"wrap_width": 80
+							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 11860.0,
+						"translation.y": 14741.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 0,
@@ -157,8 +154,8 @@
 						"selection":
 						[
 							[
-								11126,
-								11126
+								5906,
+								5906
 							]
 						],
 						"settings":
@@ -167,8 +164,8 @@
 							"tab_size": 2,
 							"translate_tabs_to_spaces": true
 						},
-						"translation.x": 0.0,
-						"translation.y": 2173.0,
+						"translation.x": 176.0,
+						"translation.y": 4170.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 1,
@@ -208,13 +205,17 @@
 		]
 	},
 	"menu_visible": true,
+	"output.Chester_Robot_CC":
+	{
+		"height": 213.0
+	},
 	"output.Cubic_Inch_Remote_2014":
 	{
-		"height": 198.0
+		"height": 178.0
 	},
 	"output.Cubic_Inch_Robot_2014":
 	{
-		"height": 198.0
+		"height": 478.0
 	},
 	"output.find_results":
 	{
